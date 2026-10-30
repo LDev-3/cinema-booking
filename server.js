@@ -199,6 +199,50 @@ app.get("/films/:id", (req, res) => {
 
   res.json(film);
 });
+app.put("/films/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const film = films.find((f) => f.id === id);
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Film introuvable"
+    });
+  }
+
+  const { titre, description, duree, genre } = req.body;
+
+  if (!titre || !description || !duree || !genre) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  if (
+    typeof titre !== "string" ||
+    typeof description !== "string" ||
+    typeof genre !== "string" ||
+    !Number.isInteger(duree) ||
+    duree <= 0 ||
+    !titre.trim() ||
+    !description.trim() ||
+    !genre.trim()
+  ) {
+    return res.status(400).json({
+      message: "Les informations du film sont invalides"
+    });
+  }
+
+  film.titre = titre.trim();
+  film.description = description.trim();
+  film.duree = duree;
+  film.genre = genre.trim();
+
+  return res.status(200).json({
+    message: "Film modifié avec succès",
+    film
+  });
+});
 app.get("/films/:id/seances", (req, res) => {
   const id = parseInt(req.params.id);
 
