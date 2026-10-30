@@ -1211,6 +1211,30 @@ app.get("/reservations", verifierToken, (req, res) => {
     reservations
   });
 });
+app.get("/reservations/recherche/:numero", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const numero = req.params.numero.toUpperCase();
+
+  const reservation = reservations.find(
+    (r) => r.numeroReservation === numero
+  );
+
+  if (!reservation) {
+    return res.status(404).json({
+      message: "Réservation introuvable"
+    });
+  }
+
+  return res.status(200).json({
+    message: "Réservation trouvée avec succès",
+    reservation
+  });
+});
 app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
   const mesReservations = reservations.filter(
     (reservation) =>
