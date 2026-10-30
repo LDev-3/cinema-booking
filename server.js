@@ -1461,6 +1461,41 @@ app.get("/statistiques/seances-proches-saturation", verifierToken, (req, res) =>
     seances: seancesProchesSaturation
   });
 });
+app.get("/statistiques/horaires-plus-demandes", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const statistiques = {};
+
+  reservations
+    .filter((reservation) => reservation.statut !== "annulee")
+    .forEach((reservation) => {
+      const seance = films
+        .flatMap((film) => film.seances)
+        .find((s) => s.id === reservation.seanceId);
+
+      if (seance) {
+        const horaire = seance.heure;
+
+        statistiques[horaire] = (statistiques[horaire] || 0) + 1;
+      }
+    });
+
+  const horairesDemandes = Object.entries(statistiques)
+    .map(([horaire, nombreReservations]) => ({
+      horaire,
+      nombreReservations
+    }))
+    .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+  return res.status(200).json({
+    message: "Horaires les plus demandés récupérés avec succès",
+    horaires: horairesDemandes
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
