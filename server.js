@@ -1496,6 +1496,41 @@ app.get("/statistiques/horaires-plus-demandes", verifierToken, (req, res) => {
     horaires: horairesDemandes
   });
 });
+app.get("/statistiques/journees-plus-frequentees", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const statistiques = {};
+
+  reservations
+    .filter((reservation) => reservation.statut !== "annulee")
+    .forEach((reservation) => {
+      const seance = films
+        .flatMap((film) => film.seances)
+        .find((s) => s.id === reservation.seanceId);
+
+      if (seance) {
+        const date = seance.date;
+
+        statistiques[date] = (statistiques[date] || 0) + 1;
+      }
+    });
+
+  const journeesFrequentees = Object.entries(statistiques)
+    .map(([date, nombreReservations]) => ({
+      date,
+      nombreReservations
+    }))
+    .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+  return res.status(200).json({
+    message: "Journées les plus fréquentées récupérées avec succès",
+    journees: journeesFrequentees
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
