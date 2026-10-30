@@ -510,6 +510,24 @@ app.post("/reservations/:id/billet", (req, res) => {
     billet
   });
 });
+app.get("/billets/:numero", (req, res) => {
+  const numero = req.params.numero;
+
+  const billet = billets.find(
+    (b) => b.numeroBillet === numero
+  );
+
+  if (!billet) {
+    return res.status(404).json({
+      message: "Billet introuvable"
+    });
+  }
+
+  res.json({
+    message: "Billet trouvé",
+    billet
+  });
+});
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`);
 });
