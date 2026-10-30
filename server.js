@@ -147,6 +147,42 @@ app.get("/films/:id/seances", (req, res) => {
 
   res.json(film.seances);
 });
+app.post("/reservations/selection-seance", (req, res) => {
+  const { seanceId } = req.body;
+
+  if (!seanceId) {
+    return res.status(400).json({
+      message: "Veuillez sélectionner une séance"
+    });
+  }
+
+  let seanceTrouvee = null;
+  let filmAssocie = null;
+
+  for (const film of films) {
+    const seance = film.seances.find(
+      (s) => s.id === parseInt(seanceId)
+    );
+
+    if (seance) {
+      seanceTrouvee = seance;
+      filmAssocie = film;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  res.json({
+    message: "Séance sélectionnée avec succès",
+    film: filmAssocie.titre,
+    seance: seanceTrouvee
+  });
+});
 app.get("/seances/:id", (req, res) => {
   const id = parseInt(req.params.id);
 
