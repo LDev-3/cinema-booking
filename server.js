@@ -1531,6 +1531,42 @@ app.get("/statistiques/journees-plus-frequentees", verifierToken, (req, res) => 
     journees: journeesFrequentees
   });
 });
+app.get("/statistiques/periodes-forte-affluence", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const statistiques = {};
+
+  reservations
+    .filter((reservation) => reservation.statut !== "annulee")
+    .forEach((reservation) => {
+      const seance = films
+        .flatMap((film) => film.seances)
+        .find((s) => s.id === reservation.seanceId);
+
+      if (seance) {
+        const date = new Date(seance.date);
+        const mois = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+        statistiques[mois] = (statistiques[mois] || 0) + 1;
+      }
+    });
+
+  const periodesForteAffluence = Object.entries(statistiques)
+    .map(([periode, nombreReservations]) => ({
+      periode,
+      nombreReservations
+    }))
+    .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+  return res.status(200).json({
+    message: "Périodes de forte affluence récupérées avec succès",
+    periodes: periodesForteAffluence
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
