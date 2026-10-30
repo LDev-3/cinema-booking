@@ -332,6 +332,35 @@ app.put("/seances/:id", (req, res) => {
     seance
   });
 });
+app.patch("/seances/:id/annuler", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const film = films.find((f) =>
+    f.seances.some((s) => s.id === id)
+  );
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const seance = film.seances.find((s) => s.id === id);
+
+  if (seance.statut === "annulee") {
+    return res.status(400).json({
+      message: "Cette séance est déjà annulée"
+    });
+  }
+
+  seance.statut = "annulee";
+  seance.dateAnnulation = new Date().toISOString();
+
+  return res.status(200).json({
+    message: "Séance annulée avec succès",
+    seance
+  });
+});
 app.put("/films/:id", (req, res) => {
   const id = parseInt(req.params.id);
 
