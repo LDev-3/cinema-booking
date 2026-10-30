@@ -183,6 +183,33 @@ app.post("/reservations/selection-seance", (req, res) => {
     seance: seanceTrouvee
   });
 });
+app.post("/reservations/informations-client", (req, res) => {
+  const { nom, prenom, email, telephone } = req.body;
+
+  if (!nom || !prenom || !email || !telephone) {
+    return res.status(400).json({
+      message: "Veuillez renseigner toutes les informations"
+    });
+  }
+
+  const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  if (!emailValide) {
+    return res.status(400).json({
+      message: "Adresse e-mail invalide"
+    });
+  }
+
+  res.status(200).json({
+    message: "Informations client enregistrées avec succès",
+    client: {
+      nom,
+      prenom,
+      email,
+      telephone
+    }
+  });
+});
 app.get("/seances/:id", (req, res) => {
   const id = parseInt(req.params.id);
 
