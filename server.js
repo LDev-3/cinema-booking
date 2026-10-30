@@ -12,7 +12,27 @@ let prochainIdUtilisateur = 1;
 const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
 app.use(express.json());
 const PORT = 3000;
+function verifierToken(req, res, next) {
+  const authorization = req.headers.authorization;
 
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return res.status(401).json({
+      message: "Authentification requise"
+    });
+  }
+
+  const token = authorization.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.utilisateur = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      message: "Token invalide ou expiré"
+    });
+  }
+}
 const films = [
   {
     id: 1,
@@ -732,6 +752,18 @@ app.post("/utilisateurs/connexion", async (req, res) => {
       email: utilisateur.email,
       role: utilisateur.role
     }
+  });
+});
+app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
+  const mesReservations = reservations.filter(
+    (reservation) =>
+      reservation.client.email.toLowerCase() ===
+      req.utilisateur.email.toLowerCase()
+  );
+
+  return res.status(200).json({
+    message: "Liste de vos réservations",
+    reservations: mesReservations
   });
 });
  console.log("Route QR code chargée");
