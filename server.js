@@ -9,6 +9,8 @@ let billets = [];
 let prochainIdBillet = 1;
 let utilisateurs = [];
 let prochainIdUtilisateur = 1;
+let notifications = [];
+let prochainIdNotification = 1;
 const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
 app.use(express.json());
 const PORT = 3000;
@@ -486,7 +488,20 @@ const reservation = {
   });
 
   reservations.push(reservation);
+const utilisateur = utilisateurs.find(
+  (u) => u.email.trim().toLowerCase() ===
+    reservation.client.email.trim().toLowerCase()
+);
 
+notifications.push({
+  id: prochainIdNotification++,
+  utilisateurId: utilisateur ? utilisateur.id : null,
+  message: `Votre réservation ${reservation.numeroReservation} a été confirmée.`,
+  date: new Date().toISOString(),
+  lu: false
+});
+console.log("Notifications enregistrées :", notifications);
+console.log("Utilisateurs enregistrés :", utilisateurs);
   res.status(201).json({
     message: "Réservation confirmée avec succès",
     reservation
@@ -842,6 +857,82 @@ app.put("/utilisateurs/mes-informations", verifierToken, (req, res) => {
       email: utilisateur.email,
       role: utilisateur.role
     }
+  });
+});
+app.put("/reservations/:id/annuler", verifierToken, (req, res) => {
+  const idReservation = parseInt(req.params.id);
+
+  const reservation = reservations.find(
+    (r) => r.id === idReservation
+  );
+
+  if (!reservation) {
+    return res.status(404).json({
+      message: "Réservation introuvable"
+    });
+  }
+
+  if (
+    reservation.client.email.toLowerCase() !==
+    req.utilisateur.email.toLowerCase()
+  ) {
+    return res.status(403).json({
+      message: "Vous ne pouvez pas annuler cette réservation"
+    });
+  }
+
+  if (reservation.statut === "annulee") {
+    return res.status(400).json({
+      message: "Cette réservation est déjà annulée"
+    });
+  }
+
+  // Retrouver la séance concernée
+  const seance = films
+    .flatMap((film) => film.seances)
+    .find((s) => s.id === reservation.seanceId);
+
+  if (!seance) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  // Libérer les places réservées
+  reservation.places.forEach((placeReservation) => {
+    const place = seance.places.find(
+      (p) => p.id === placeReservation.id
+    );
+
+    if (place) {
+      place.statut = "disponible";
+    }
+  });
+
+  reservation.statut = "annulee";
+  notifications.push({
+  id: prochainIdNotification++,
+  utilisateurId: req.utilisateur.id,
+  message: `Votre réservation ${reservation.numeroReservation} a été annulée.`,
+  date: new Date().toISOString(),
+  lu: false
+});
+  reservation.dateAnnulation = new Date().toISOString();
+
+  return res.status(200).json({
+    message: "Réservation annulée avec succès",
+    reservation
+  });
+});
+app.get("/utilisateurs/mes-notifications", verifierToken, (req, res) => {
+  const mesNotifications = notifications.filter(
+    (notification) =>
+      notification.utilisateurId === req.utilisateur.id
+  );
+
+  return res.status(200).json({
+    message: "Liste de vos notifications",
+    notifications: mesNotifications
   });
 });
  console.log("Route QR code chargée");
