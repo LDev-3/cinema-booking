@@ -1,6 +1,7 @@
 const express = require("express");
 
 const app = express();
+app.use(express.json());
 const PORT = 3000;
 
 const films = [
@@ -242,6 +243,60 @@ app.get("/films/recherche", (req, res) => {
   );
 
   res.json(resultats);
+});
+app.post("/seances/:id/places/selection", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const { placesIds } = req.body;
+
+  if (!Array.isArray(placesIds) || placesIds.length === 0) {
+    return res.status(400).json({
+      message: "Veuillez sélectionner au moins une place"
+    });
+  }
+
+  let seanceTrouvee = null;
+
+  for (const film of films) {
+    const seance = film.seances.find((s) => s.id === id);
+
+    if (seance) {
+      seanceTrouvee = seance;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesSelectionnees = seanceTrouvee.places.filter(
+    (place) => placesIds.includes(place.id)
+  );
+
+  if (placesSelectionnees.length !== placesIds.length) {
+    return res.status(400).json({
+      message: "Une ou plusieurs places sont introuvables"
+    });
+  }
+
+  const placesIndisponibles = placesSelectionnees.filter(
+    (place) => place.statut !== "disponible"
+  );
+
+  if (placesIndisponibles.length > 0) {
+    return res.status(400).json({
+      message: "Une ou plusieurs places ne sont pas disponibles"
+    });
+  }
+
+  res.json({
+    message: "Places sélectionnées avec succès",
+    seanceId: seanceTrouvee.id,
+    placesSelectionnees: placesSelectionnees
+  });
 });
 app.get("/seances/:id/places/reservees", (req, res) => {
   const id = parseInt(req.params.id);
