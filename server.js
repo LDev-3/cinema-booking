@@ -171,6 +171,7 @@ app.get("/seances/:id", (req, res) => {
 
   res.json(seanceTrouvee);
 });
+
 app.get("/seances/:id/places", (req, res) => {
   const id = parseInt(req.params.id);
 
@@ -195,6 +196,36 @@ app.get("/seances/:id/places", (req, res) => {
     seanceId: seanceTrouvee.id,
     salle: seanceTrouvee.salle,
     places: seanceTrouvee.places
+  });
+});
+app.get("/seances/:id/places/disponibles", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  let seanceTrouvee = null;
+
+  for (const film of films) {
+    const seance = film.seances.find((s) => s.id === id);
+
+    if (seance) {
+      seanceTrouvee = seance;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesDisponibles = seanceTrouvee.places.filter(
+    (place) => place.statut === "disponible"
+  );
+
+  res.json({
+    seanceId: seanceTrouvee.id,
+    salle: seanceTrouvee.salle,
+    placesDisponibles: placesDisponibles
   });
 });
 app.get("/films/recherche", (req, res) => {
