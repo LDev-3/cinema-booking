@@ -652,7 +652,38 @@ app.get("/seances/:id", (req, res) => {
 
   res.json(seanceTrouvee);
 });
+app.get("/seances/:id/places/etat", (req, res) => {
+  const id = parseInt(req.params.id);
 
+  const seance = films
+    .flatMap((film) => film.seances)
+    .find((seance) => seance.id === id);
+
+  if (!seance) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesDisponibles = seance.places.filter(
+    (place) => place.statut === "disponible"
+  );
+
+  const placesOccupees = seance.places.filter(
+    (place) => place.statut === "reservee"
+  );
+
+  return res.status(200).json({
+    message: "État des places récupéré avec succès",
+    seanceId: seance.id,
+    salle: seance.salle,
+    capacite: seance.capacite,
+    nombrePlacesDisponibles: placesDisponibles.length,
+    nombrePlacesOccupees: placesOccupees.length,
+    placesDisponibles,
+    placesOccupees
+  });
+});
 app.get("/seances/:id/places", (req, res) => {
   const id = parseInt(req.params.id);
 
