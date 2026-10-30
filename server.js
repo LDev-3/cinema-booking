@@ -155,6 +155,69 @@ let prochainIdSeance = Math.max(
   ...films.flatMap(film => film.seances.map(seance => seance.id))
 ) + 1;
 let prochainIdFilm = Math.max(...films.map(film => film.id)) + 1;
+app.put("/salles/:nom/capacite", (req, res) => {
+  const nomSalle = decodeURIComponent(req.params.nom);
+  const { capacite } = req.body;
+
+  if (!Number.isInteger(capacite) || capacite <= 0) {
+    return res.status(400).json({
+      message: "La capacité doit être un entier positif"
+    });
+  }
+
+  const seancesSalle = films.flatMap((film) =>
+    film.seances.filter((seance) => seance.salle === nomSalle)
+  );
+
+  if (seancesSalle.length === 0) {
+    return res.status(404).json({
+      message: "Salle introuvable"
+    });
+  }
+
+  const placesReservees = seancesSalle.map((seance) =>
+    seance.places.filter((place) => place.statut === "reservee").length
+  );
+
+  if (placesReservees.some((nombre) => capacite < nombre)) {
+    return res.status(400).json({
+      message: "La capacité ne peut pas être inférieure au nombre de places réservées"
+    });
+  }
+
+  seancesSalle.forEach((seance) => {
+    const reservees = seance.places.filter(
+      (place) => place.statut === "reservee"
+    );
+
+    seance.capacite = capacite;
+    seance.places = reservees;
+
+    for (let i = 0; i < capacite; i++) {
+      const rangee = String.fromCharCode(65 + Math.floor(i / 10));
+      const numero = (i % 10) + 1;
+
+      const dejaReservee = reservees.some(
+        (place) => place.rangee === rangee && place.numero === numero
+      );
+
+      if (!dejaReservee) {
+        seance.places.push({
+          id: i + 1,
+          rangee,
+          numero,
+          statut: "disponible"
+        });
+      }
+    }
+  });
+
+  return res.status(200).json({
+    message: "Capacité de la salle modifiée avec succès",
+    salle: nomSalle,
+    capacite
+  });
+});
 app.get("/salles", (req, res) => {
   const salles = [
     ...new Set(
