@@ -1,6 +1,8 @@
 const express = require("express");
 
 const app = express();
+let reservations = [];
+let prochainIdReservation = 1;
 app.use(express.json());
 const PORT = 3000;
 
@@ -391,7 +393,78 @@ app.get("/seances/:id/places/reservees", (req, res) => {
     placesReservees: placesReservees
   });
 });
+app.post("/reservations/confirmer", (req, res) => {
+  const { seanceId, placesIds, nom, prenom, email, telephone } = req.body;
 
+  if (!seanceId || !Array.isArray(placesIds) || placesIds.length === 0 ||
+      !nom || !prenom || !email || !telephone) {
+    return res.status(400).json({
+      message: "Informations de réservation incomplètes"
+    });
+  }
+
+  let seanceTrouvee = null;
+
+  for (const film of films) {
+    const seance = film.seances.find(
+      (s) => s.id === parseInt(seanceId)
+    );
+
+    if (seance) {
+      seanceTrouvee = seance;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesSelectionnees = seanceTrouvee.places.filter(
+    (place) => placesIds.includes(place.id)
+  );
+
+  if (placesSelectionnees.length !== placesIds.length) {
+    return res.status(400).json({
+      message: "Une ou plusieurs places sont introuvables"
+    });
+  }
+
+  if (placesSelectionnees.some((place) => place.statut !== "disponible")) {
+    return res.status(400).json({
+      message: "Une ou plusieurs places ne sont plus disponibles"
+    });
+  }
+
+  const idReservation = prochainIdReservation++;
+
+const reservation = {
+  id: idReservation,
+  numeroReservation: `RES-${String(idReservation).padStart(6, "0")}`,
+    seanceId: parseInt(seanceId),
+    client: { nom, prenom, email, telephone },
+    places: placesSelectionnees.map((place) => ({
+      id: place.id,
+      rangee: place.rangee,
+      numero: place.numero
+    })),
+    dateReservation: new Date().toISOString(),
+    statut: "confirmee"
+  };
+
+  placesSelectionnees.forEach((place) => {
+    place.statut = "reservee";
+  });
+
+  reservations.push(reservation);
+
+  res.status(201).json({
+    message: "Réservation confirmée avec succès",
+    reservation
+  });
+});
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`);
 });
