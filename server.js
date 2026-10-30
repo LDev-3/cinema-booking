@@ -11,19 +11,33 @@ const films = [
     duree: 120,
     genre: "Aventure",
    seances: [
-  {
-    id: 1,
-    date: "2026-11-01",
-    heure: "14:00",
-    salle: "Salle 1",
-    capacite: 100
-  },
+ {
+  id: 1,
+  date: "2026-11-01",
+  heure: "14:00",
+  salle: "Salle 1",
+  capacite: 100,
+  places: [
+    { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+    { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+    { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+    { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+    { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+  ]
+},
   {
     id: 2,
     date: "2026-11-01",
     heure: "18:00",
     salle: "Salle 2",
-    capacite: 80
+    capacite: 80,
+    places: [
+      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+    ]
   }
 ]
   },
@@ -39,14 +53,28 @@ const films = [
       date: "2026-11-02",
       heure: "16:00",
       salle: "Salle 1",
-      capacite: 100
+      capacite: 100,
+      places: [
+      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+    ]
     },
     {
       id: 4,
       date: "2026-11-02",
       heure: "20:00",
       salle: "Salle 2",
-      capacite: 80
+      capacite: 80,
+      places: [
+      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+    ]
     }
   ]
   },
@@ -62,14 +90,28 @@ const films = [
       date: "2026-11-03",
       heure: "15:00",
       salle: "Salle 1",
-      capacite: 100
+      capacite: 100,
+      places: [
+        { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+        { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+        { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+        { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+        { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+      ]
     },
     {
       id: 6,
       date: "2026-11-03",
       heure: "19:00",
       salle: "Salle 2",
-      capacite: 80
+      capacite: 80,
+      places: [
+      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
+      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
+      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
+      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
+      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
+    ]
     }
   ]
   }
@@ -128,6 +170,32 @@ app.get("/seances/:id", (req, res) => {
   }
 
   res.json(seanceTrouvee);
+});
+app.get("/seances/:id/places", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  let seanceTrouvee = null;
+
+  for (const film of films) {
+    const seance = film.seances.find((s) => s.id === id);
+
+    if (seance) {
+      seanceTrouvee = seance;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  res.json({
+    seanceId: seanceTrouvee.id,
+    salle: seanceTrouvee.salle,
+    places: seanceTrouvee.places
+  });
 });
 app.get("/films/recherche", (req, res) => {
   const recherche = req.query.titre;
