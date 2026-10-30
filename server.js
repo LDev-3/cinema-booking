@@ -1422,6 +1422,45 @@ app.get("/utilisateurs/mes-notifications", verifierToken, (req, res) => {
     notifications: mesNotifications
   });
 });
+app.get("/statistiques/seances-proches-saturation", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const seances = films.flatMap((film) =>
+    film.seances.map((seance) => {
+      const capacite = seance.places.length;
+      const placesReservees = seance.places.filter(
+        (place) => place.statut === "reservee"
+      ).length;
+
+      const tauxRemplissage = capacite > 0
+        ? (placesReservees / capacite) * 100
+        : 0;
+
+      return {
+        film: film.titre,
+        seanceId: seance.id,
+        salle: seance.salle,
+        capacite,
+        placesReservees,
+        tauxRemplissage: Number(tauxRemplissage.toFixed(2))
+      };
+    })
+  );
+
+  const seancesProchesSaturation = seances.filter(
+    (seance) => seance.tauxRemplissage >= 80
+  );
+
+  return res.status(200).json({
+    message: "Séances proches de la saturation récupérées avec succès",
+    nombreSeances: seancesProchesSaturation.length,
+    seances: seancesProchesSaturation
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
