@@ -1358,14 +1358,15 @@ app.put("/reservations/:id/annuler", verifierToken, (req, res) => {
     });
   }
 
-  if (
-    reservation.client.email.toLowerCase() !==
+if (
+  req.utilisateur.role !== "admin" &&
+  reservation.client.email.toLowerCase() !==
     req.utilisateur.email.toLowerCase()
-  ) {
-    return res.status(403).json({
-      message: "Vous ne pouvez pas annuler cette réservation"
-    });
-  }
+) {
+  return res.status(403).json({
+    message: "Vous ne pouvez pas annuler cette réservation"
+  });
+}
 
   if (reservation.statut === "annulee") {
     return res.status(400).json({
