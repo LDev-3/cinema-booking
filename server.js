@@ -151,6 +151,9 @@ const films = [
   ]
   }
 ];
+let prochainIdSeance = Math.max(
+  ...films.flatMap(film => film.seances.map(seance => seance.id))
+) + 1;
 let prochainIdFilm = Math.max(...films.map(film => film.id)) + 1;
 app.get("/films", (req, res) => {
   res.json(films);
@@ -201,6 +204,66 @@ app.get("/films/:id", (req, res) => {
   }
 
   res.json(film);
+});
+app.post("/films/:id/seances", (req, res) => {
+  const filmId = parseInt(req.params.id);
+  const film = films.find((f) => f.id === filmId);
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Film introuvable"
+    });
+  }
+
+  const { date, heure, salle, capacite } = req.body;
+
+  if (!date || !heure || !salle || !capacite) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  if (
+    typeof date !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    typeof heure !== "string" ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(heure) ||
+    typeof salle !== "string" ||
+    !salle.trim() ||
+    !Number.isInteger(capacite) ||
+    capacite <= 0
+  ) {
+    return res.status(400).json({
+      message: "Les informations de la séance sont invalides"
+    });
+  }
+
+  const places = [];
+
+  for (let i = 0; i < capacite; i++) {
+    places.push({
+      id: i + 1,
+      rangee: String.fromCharCode(65 + Math.floor(i / 10)),
+      numero: (i % 10) + 1,
+      statut: "disponible"
+    });
+  }
+
+  const nouvelleSeance = {
+    id: prochainIdSeance++,
+    date,
+    heure,
+    salle: salle.trim(),
+    capacite,
+    places
+  };
+
+  film.seances.push(nouvelleSeance);
+
+  return res.status(201).json({
+    message: "Séance créée avec succès",
+    seance: nouvelleSeance
+  });
 });
 app.put("/films/:id", (req, res) => {
   const id = parseInt(req.params.id);
