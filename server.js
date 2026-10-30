@@ -265,6 +265,73 @@ app.post("/films/:id/seances", (req, res) => {
     seance: nouvelleSeance
   });
 });
+app.put("/seances/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const film = films.find((f) =>
+    f.seances.some((s) => s.id === id)
+  );
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const seance = film.seances.find((s) => s.id === id);
+
+  const { date, heure, salle, capacite } = req.body;
+
+  if (!date || !heure || !salle || !capacite) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  if (
+    typeof date !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    typeof heure !== "string" ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(heure) ||
+    typeof salle !== "string" ||
+    !salle.trim() ||
+    !Number.isInteger(capacite) ||
+    capacite <= 0 ||
+    capacite < seance.places.filter(
+      (p) => p.statut === "reservee"
+    ).length
+  ) {
+    return res.status(400).json({
+      message: "Les informations de la séance sont invalides"
+    });
+  }
+
+  seance.date = date;
+  seance.heure = heure;
+  seance.salle = salle.trim();
+
+  const placesReservees = seance.places.filter(
+    (p) => p.statut === "reservee"
+  );
+
+  seance.capacite = capacite;
+
+  seance.places = placesReservees;
+
+  for (let i = placesReservees.length; i < capacite; i++) {
+    seance.places.push({
+      id: i + 1,
+      rangee: String.fromCharCode(65 + Math.floor(i / 10)),
+      numero: (i % 10) + 1,
+      statut: "disponible"
+    });
+  }
+
+  return res.status(200).json({
+    message: "Séance modifiée avec succès",
+    seance
+  });
+});
 app.put("/films/:id", (req, res) => {
   const id = parseInt(req.params.id);
 
