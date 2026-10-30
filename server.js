@@ -9,21 +9,33 @@ const films = [
     titre: "Jungle",
     description: "Un film d'aventure.",
     duree: 120,
-    genre: "Aventure"
+    genre: "Aventure",
+    seances: [
+      { date: "2026-11-01", heure: "14:00" },
+      { date: "2026-11-01", heure: "18:00" }
+    ]
   },
   {
     id: 2,
     titre: "King",
     description: "Un film dramatique.",
     duree: 105,
-    genre: "Drame"
+    genre: "Drame",
+    seances: [
+      { date: "2026-11-02", heure: "16:00" },
+      { date: "2026-11-02", heure: "20:00" }
+    ]
   },
   {
     id: 3,
     titre: "Le Roi Lion",
     description: "L'histoire de Simba.",
     duree: 118,
-    genre: "Animation"
+    genre: "Animation",
+    seances: [
+      { date: "2026-11-03", heure: "15:00" },
+      { date: "2026-11-03", heure: "19:00" }
+    ]
   }
 ];
 
@@ -42,6 +54,19 @@ app.get("/films/:id", (req, res) => {
   }
 
   res.json(film);
+});
+app.get("/films/:id/seances", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const film = films.find((film) => film.id === id);
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Film introuvable"
+    });
+  }
+
+  res.json(film.seances);
 });
 app.get("/films/recherche", (req, res) => {
   const recherche = req.query.titre;
