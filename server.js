@@ -9,6 +9,18 @@ let billets = [];
 let prochainIdBillet = 1;
 let utilisateurs = [];
 let prochainIdUtilisateur = 1;
+// Administrateur temporaire pour les tests
+let adminTest = {
+  id: 0,
+  nom: "Admin",
+  prenom: "Cinema",
+  email: "admin@cinema.com",
+  motDePasse: bcrypt.hashSync("Admin2026!", 10),
+  role: "admin",
+  dateCreation: new Date().toISOString()
+};
+
+utilisateurs.push(adminTest);
 let notifications = [];
 let prochainIdNotification = 1;
 const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
@@ -1103,6 +1115,7 @@ app.post("/utilisateurs/inscription", async (req, res) => {
       role: "utilisateur",
       dateCreation: new Date().toISOString()
     };
+    
 
     utilisateurs.push(utilisateur);
 
@@ -1184,6 +1197,18 @@ app.post("/utilisateurs/connexion", async (req, res) => {
       email: utilisateur.email,
       role: utilisateur.role
     }
+  });
+});
+app.get("/reservations", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  return res.status(200).json({
+    message: "Liste des réservations récupérée avec succès",
+    reservations
   });
 });
 app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
