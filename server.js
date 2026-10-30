@@ -766,6 +766,24 @@ app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
     reservations: mesReservations
   });
 });
+app.get("/utilisateurs/mes-billets", verifierToken, (req, res) => {
+  const mesReservations = reservations.filter(
+    (reservation) =>
+      reservation.client.email.toLowerCase() ===
+      req.utilisateur.email.toLowerCase()
+  );
+
+  const mesBillets = billets.filter((billet) =>
+    mesReservations.some(
+      (reservation) => reservation.id === billet.reservationId
+    )
+  );
+
+  return res.status(200).json({
+    message: "Liste de vos billets",
+    billets: mesBillets
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
