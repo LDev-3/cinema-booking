@@ -1,6 +1,7 @@
 const express = require("express");
 const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const app = express();
 let reservations = [];
 let prochainIdReservation = 1;
@@ -8,6 +9,7 @@ let billets = [];
 let prochainIdBillet = 1;
 let utilisateurs = [];
 let prochainIdUtilisateur = 1;
+const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
 app.use(express.json());
 const PORT = 3000;
 
@@ -668,6 +670,69 @@ app.post("/utilisateurs/inscription", async (req, res) => {
       message: "Erreur lors de la création du compte"
     });
   }
+});
+app.post("/utilisateurs/connexion", async (req, res) => {
+  const { email, motDePasse } = req.body;
+
+  // Vérifier les champs obligatoires
+  if (
+    typeof email !== "string" ||
+    typeof motDePasse !== "string" ||
+    !email.trim() ||
+    !motDePasse
+  ) {
+    return res.status(400).json({
+      message: "L'email et le mot de passe sont obligatoires"
+    });
+  }
+
+  // Rechercher l'utilisateur
+  const emailNormalise = email.trim().toLowerCase();
+
+  const utilisateur = utilisateurs.find(
+    (u) => u.email === emailNormalise
+  );
+
+  if (!utilisateur) {
+    return res.status(401).json({
+      message: "Email ou mot de passe incorrect"
+    });
+  }
+
+  // Vérifier le mot de passe
+  const motDePasseCorrect = await bcrypt.compare(
+    motDePasse,
+    utilisateur.motDePasse
+  );
+
+  if (!motDePasseCorrect) {
+    return res.status(401).json({
+      message: "Email ou mot de passe incorrect"
+    });
+  }
+
+  // Générer le token JWT
+  const token = jwt.sign(
+    {
+      id: utilisateur.id,
+      email: utilisateur.email,
+      role: utilisateur.role
+    },
+    JWT_SECRET,
+    { expiresIn: "2h" }
+  );
+
+  return res.status(200).json({
+    message: "Connexion réussie",
+    token,
+    utilisateur: {
+      id: utilisateur.id,
+      nom: utilisateur.nom,
+      prenom: utilisateur.prenom,
+      email: utilisateur.email,
+      role: utilisateur.role
+    }
+  });
 });
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
