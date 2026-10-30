@@ -1235,6 +1235,26 @@ app.get("/reservations/recherche/:numero", verifierToken, (req, res) => {
     reservation
   });
 });
+app.get("/reservations/seance/:seanceId", verifierToken, (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const seanceId = parseInt(req.params.seanceId);
+
+  const reservationsSeance = reservations.filter(
+    (reservation) => reservation.seanceId === seanceId
+  );
+
+  return res.status(200).json({
+    message: "Réservations de la séance récupérées avec succès",
+    seanceId,
+    nombreReservations: reservationsSeance.length,
+    reservations: reservationsSeance
+  });
+});
 app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
   const mesReservations = reservations.filter(
     (reservation) =>
