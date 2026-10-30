@@ -1,10 +1,13 @@
 const express = require("express");
 const QRCode = require("qrcode");
+const bcrypt = require("bcryptjs");
 const app = express();
 let reservations = [];
 let prochainIdReservation = 1;
 let billets = [];
 let prochainIdBillet = 1;
+let utilisateurs = [];
+let prochainIdUtilisateur = 1;
 app.use(express.json());
 const PORT = 3000;
 
@@ -589,6 +592,82 @@ app.post("/billets/:numero/valider", (req, res) => {
     message: "Billet validé avec succès. Accès autorisé.",
     billet
   });
+});
+app.post("/utilisateurs/inscription", async (req, res) => {
+  const { nom, prenom, email, motDePasse } = req.body;
+
+  if (
+    typeof nom !== "string" ||
+    typeof prenom !== "string" ||
+    typeof email !== "string" ||
+    typeof motDePasse !== "string" ||
+    !nom.trim() ||
+    !prenom.trim() ||
+    !email.trim() ||
+    !motDePasse
+  ) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailValide.test(email.trim())) {
+    return res.status(400).json({
+      message: "Adresse email invalide"
+    });
+  }
+
+  if (motDePasse.length < 8) {
+    return res.status(400).json({
+      message: "Le mot de passe doit contenir au moins 8 caractères"
+    });
+  }
+
+  const emailNormalise = email.trim().toLowerCase();
+
+  const utilisateurExistant = utilisateurs.find(
+    (u) => u.email === emailNormalise
+  );
+
+  if (utilisateurExistant) {
+    return res.status(409).json({
+      message: "Cette adresse email est déjà utilisée"
+    });
+  }
+
+  try {
+    const motDePasseHache = await bcrypt.hash(motDePasse, 10);
+
+    const utilisateur = {
+      id: prochainIdUtilisateur++,
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      email: emailNormalise,
+      motDePasse: motDePasseHache,
+      role: "utilisateur",
+      dateCreation: new Date().toISOString()
+    };
+
+    utilisateurs.push(utilisateur);
+
+    return res.status(201).json({
+      message: "Compte utilisateur créé avec succès",
+      utilisateur: {
+        id: utilisateur.id,
+        nom: utilisateur.nom,
+        prenom: utilisateur.prenom,
+        email: utilisateur.email,
+        role: utilisateur.role,
+        dateCreation: utilisateur.dateCreation
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur lors de la création du compte"
+    });
+  }
 });
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
