@@ -563,6 +563,33 @@ app.get("/billets/:numero/qr-code", async (req, res) => {
     });
   }
 });
+app.post("/billets/:numero/valider", (req, res) => {
+  const numero = req.params.numero;
+
+  const billet = billets.find(
+    (b) => b.numeroBillet === numero
+  );
+
+  if (!billet) {
+    return res.status(404).json({
+      message: "Billet introuvable"
+    });
+  }
+
+  if (billet.statut === "utilise") {
+    return res.status(400).json({
+      message: "Ce billet a déjà été utilisé"
+    });
+  }
+
+  billet.statut = "utilise";
+  billet.dateUtilisation = new Date().toISOString();
+
+  res.json({
+    message: "Billet validé avec succès. Accès autorisé.",
+    billet
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
