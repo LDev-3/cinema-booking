@@ -3,6 +3,8 @@ const express = require("express");
 const app = express();
 let reservations = [];
 let prochainIdReservation = 1;
+let billets = [];
+let prochainIdBillet = 1;
 app.use(express.json());
 const PORT = 3000;
 
@@ -463,6 +465,49 @@ const reservation = {
   res.status(201).json({
     message: "Réservation confirmée avec succès",
     reservation
+  });
+});
+app.post("/reservations/:id/billet", (req, res) => {
+  const reservationId = parseInt(req.params.id);
+
+  const reservation = reservations.find(
+    (r) => r.id === reservationId
+  );
+
+  if (!reservation) {
+    return res.status(404).json({
+      message: "Réservation introuvable"
+    });
+  }
+
+  const billetExistant = billets.find(
+    (b) => b.reservationId === reservationId
+  );
+
+  if (billetExistant) {
+    return res.status(409).json({
+      message: "Un billet existe déjà pour cette réservation",
+      billet: billetExistant
+    });
+  }
+
+  const billet = {
+    id: prochainIdBillet++,
+    numeroBillet: `BIL-${String(prochainIdBillet - 1).padStart(6, "0")}`,
+    reservationId: reservation.id,
+    numeroReservation: reservation.numeroReservation,
+    client: reservation.client,
+    seanceId: reservation.seanceId,
+    places: reservation.places,
+    dateGeneration: new Date().toISOString(),
+    statut: "valide"
+  };
+
+  billets.push(billet);
+
+  res.status(201).json({
+    message: "Billet généré avec succès",
+    billet
   });
 });
 app.listen(PORT, () => {
