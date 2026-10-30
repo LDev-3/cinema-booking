@@ -212,6 +212,36 @@ app.get("/films/recherche", (req, res) => {
 
   res.json(resultats);
 });
+app.get("/seances/:id/places/reservees", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  let seanceTrouvee = null;
+
+  for (const film of films) {
+    const seance = film.seances.find((s) => s.id === id);
+
+    if (seance) {
+      seanceTrouvee = seance;
+      break;
+    }
+  }
+
+  if (!seanceTrouvee) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesReservees = seanceTrouvee.places.filter(
+    (place) => place.statut === "reservee"
+  );
+
+  res.json({
+    seanceId: seanceTrouvee.id,
+    salle: seanceTrouvee.salle,
+    placesReservees: placesReservees
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`);
