@@ -148,9 +148,43 @@ const films = [
   ]
   }
 ];
-
+let prochainIdFilm = Math.max(...films.map(film => film.id)) + 1;
 app.get("/films", (req, res) => {
   res.json(films);
+}); 
+app.post("/films", (req, res) => {
+  const { titre, description, duree, genre } = req.body;
+
+  // Vérifier les champs obligatoires
+  if (!titre || !description || !duree || !genre) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  // Vérifier la durée
+  if (!Number.isInteger(duree) || duree <= 0) {
+    return res.status(400).json({
+      message: "La durée doit être un nombre entier positif"
+    });
+  }
+
+  // Créer le nouveau film
+  const nouveauFilm = {
+    id: prochainIdFilm++,
+    titre: titre.trim(),
+    description: description.trim(),
+    duree,
+    genre: genre.trim(),
+    seances: []
+  };
+
+  films.push(nouveauFilm);
+
+  return res.status(201).json({
+    message: "Film ajouté avec succès",
+    film: nouveauFilm
+  });
 });
 app.get("/films/:id", (req, res) => {
   const id = parseInt(req.params.id);
