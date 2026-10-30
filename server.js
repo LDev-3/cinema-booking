@@ -155,6 +155,20 @@ let prochainIdSeance = Math.max(
   ...films.flatMap(film => film.seances.map(seance => seance.id))
 ) + 1;
 let prochainIdFilm = Math.max(...films.map(film => film.id)) + 1;
+app.get("/salles", (req, res) => {
+  const salles = [
+    ...new Set(
+      films.flatMap((film) =>
+        film.seances.map((seance) => seance.salle)
+      )
+    )
+  ];
+
+  return res.status(200).json({
+    message: "Liste des salles récupérée avec succès",
+    salles
+  });
+});
 app.get("/films", (req, res) => {
   res.json(films);
 }); 
