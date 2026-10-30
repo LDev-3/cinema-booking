@@ -42,6 +42,7 @@ const films = [
     description: "Un film d'aventure.",
     duree: 120,
     genre: "Aventure",
+    actif: true,
    seances: [
  {
   id: 1,
@@ -79,6 +80,7 @@ const films = [
     description: "Un film dramatique.",
     duree: 105,
     genre: "Drame",
+    actif: true,
     seances: [
     {
       id: 3,
@@ -116,6 +118,7 @@ const films = [
     description: "L'histoire de Simba.",
     duree: 118,
     genre: "Animation",
+    actif: true,
   seances: [
     {
       id: 5,
@@ -240,6 +243,30 @@ app.put("/films/:id", (req, res) => {
 
   return res.status(200).json({
     message: "Film modifié avec succès",
+    film
+  });
+});
+app.patch("/films/:id/desactiver", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const film = films.find((f) => f.id === id);
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Film introuvable"
+    });
+  }
+
+  if (!film.actif) {
+    return res.status(400).json({
+      message: "Ce film est déjà désactivé"
+    });
+  }
+
+  film.actif = false;
+
+  return res.status(200).json({
+    message: "Film désactivé avec succès",
     film
   });
 });
