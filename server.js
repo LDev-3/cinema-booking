@@ -1,5 +1,5 @@
 const express = require("express");
-
+const QRCode = require("qrcode");
 const app = express();
 let reservations = [];
 let prochainIdReservation = 1;
@@ -528,6 +528,43 @@ app.get("/billets/:numero", (req, res) => {
     billet
   });
 });
+app.get("/billets/:numero/qr-code", async (req, res) => {
+   console.log("Route QR code appelée");
+  const numero = req.params.numero;
+
+  const billet = billets.find(
+    (b) => b.numeroBillet === numero
+  );
+
+  if (!billet) {
+    return res.status(404).json({
+      message: "Billet introuvable"
+    });
+  }
+
+  try {
+    const contenuQR = JSON.stringify({
+      numeroBillet: billet.numeroBillet,
+      numeroReservation: billet.numeroReservation,
+      reservationId: billet.reservationId
+    });
+
+    const qrCode = await QRCode.toDataURL(contenuQR);
+
+    res.json({
+      message: "QR code généré avec succès",
+      numeroBillet: billet.numeroBillet,
+      qrCode
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Erreur lors de la génération du QR code"
+    });
+  }
+});
+ console.log("Route QR code chargée");
 app.listen(PORT, () => {
+ 
   console.log(`Serveur lancé sur le port ${PORT}`);
 });
