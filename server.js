@@ -784,6 +784,66 @@ app.get("/utilisateurs/mes-billets", verifierToken, (req, res) => {
     billets: mesBillets
   });
 });
+app.put("/utilisateurs/mes-informations", verifierToken, (req, res) => {
+  const { nom, prenom, email } = req.body;
+
+  if (
+    typeof nom !== "string" ||
+    typeof prenom !== "string" ||
+    typeof email !== "string" ||
+    !nom.trim() ||
+    !prenom.trim() ||
+    !email.trim()
+  ) {
+    return res.status(400).json({
+      message: "Tous les champs sont obligatoires"
+    });
+  }
+
+  const emailNormalise = email.trim().toLowerCase();
+  const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailValide.test(emailNormalise)) {
+    return res.status(400).json({
+      message: "Adresse email invalide"
+    });
+  }
+
+  const utilisateur = utilisateurs.find(
+    (u) => u.id === req.utilisateur.id
+  );
+
+  if (!utilisateur) {
+    return res.status(404).json({
+      message: "Utilisateur introuvable"
+    });
+  }
+
+  const emailDejaUtilise = utilisateurs.find(
+    (u) => u.email === emailNormalise && u.id !== utilisateur.id
+  );
+
+  if (emailDejaUtilise) {
+    return res.status(409).json({
+      message: "Cette adresse email est déjà utilisée"
+    });
+  }
+
+  utilisateur.nom = nom.trim();
+  utilisateur.prenom = prenom.trim();
+  utilisateur.email = emailNormalise;
+
+  return res.status(200).json({
+    message: "Informations personnelles modifiées avec succès",
+    utilisateur: {
+      id: utilisateur.id,
+      nom: utilisateur.nom,
+      prenom: utilisateur.prenom,
+      email: utilisateur.email,
+      role: utilisateur.role
+    }
+  });
+});
  console.log("Route QR code chargée");
 app.listen(PORT, () => {
  
