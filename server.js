@@ -409,6 +409,51 @@ app.put("/seances/:id", (req, res) => {
     seance
   });
 });
+app.put("/seances/:id/salle", (req, res) => {
+  const id = parseInt(req.params.id);
+  const { salle } = req.body;
+
+  const film = films.find((f) =>
+    f.seances.some((s) => s.id === id)
+  );
+
+  if (!film) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  if (typeof salle !== "string" || !salle.trim()) {
+    return res.status(400).json({
+      message: "Le nom de la salle est obligatoire"
+    });
+  }
+
+  const seance = film.seances.find((s) => s.id === id);
+
+  const autreSeance = films.some((f) =>
+    f.seances.some((s) =>
+      s.id !== id &&
+      s.salle === salle.trim() &&
+      s.date === seance.date &&
+      s.heure === seance.heure &&
+      s.statut !== "annulee"
+    )
+  );
+
+  if (autreSeance) {
+    return res.status(409).json({
+      message: "Cette salle est déjà utilisée à cet horaire"
+    });
+  }
+
+  seance.salle = salle.trim();
+
+  return res.status(200).json({
+    message: "Salle associée à la séance avec succès",
+    seance
+  });
+});
 app.patch("/seances/:id/annuler", (req, res) => {
   const id = parseInt(req.params.id);
 
