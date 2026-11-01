@@ -1609,7 +1609,10 @@ app.get("/statistiques/periodes-forte-affluence", verifierToken, (req, res) => {
   });
 });
  console.log("Route QR code chargée");
-app.listen(PORT, () => {
- 
-  console.log(`Serveur lancé sur le port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Serveur lancé sur le port ${PORT}`);
+  });
+}
+
+module.exports = app;
