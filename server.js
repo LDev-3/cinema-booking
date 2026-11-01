@@ -3,6 +3,8 @@ const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const app = express();
+const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
 let reservations = [];
 let prochainIdReservation = 1;
 let billets = [];
@@ -25,6 +27,26 @@ let notifications = [];
 let prochainIdNotification = 1;
 const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
 app.use(express.json());
+const swaggerOptions = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Cinema Booking API",
+      version: "1.0.0",
+      description: "Documentation de l'API de réservation de cinéma"
+    },
+    servers: [
+      {
+        url: "http://localhost:3000"
+      }
+    ]
+  },
+  apis: ["./server.js"]
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const PORT = 3000;
 function verifierToken(req, res, next) {
   const authorization = req.headers.authorization;
@@ -997,6 +1019,25 @@ app.get("/billets/:numero", (req, res) => {
     billet
   });
 });
+/**
+ * @swagger
+ * /billets/{numero}/qr-code:
+ *   get:
+ *     summary: Générer le QR code d'un billet
+ *     tags: [Billets]
+ *     parameters:
+ *       - in: path
+ *         name: numero
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Numéro du billet
+ *     responses:
+ *       200:
+ *         description: QR code généré avec succès
+ *       404:
+ *         description: Billet introuvable
+ */
 app.get("/billets/:numero/qr-code", async (req, res) => {
    console.log("Route QR code appelée");
   const numero = req.params.numero;
