@@ -63,7 +63,7 @@ function verifierToken(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.utilisateur = decoded;
     next();
-  } catch (error) {
+  } catch  {
     return res.status(401).json({
       message: "Token invalide ou expiré"
     });
@@ -1067,7 +1067,7 @@ app.get("/billets/:numero/qr-code", async (req, res) => {
       qrCode
     });
 
-  } catch (error) {
+  } catch {
     res.status(500).json({
       message: "Erreur lors de la génération du QR code"
     });
@@ -1171,7 +1171,7 @@ app.post("/utilisateurs/inscription", async (req, res) => {
         dateCreation: utilisateur.dateCreation
       }
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       message: "Erreur lors de la création du compte"
     });
