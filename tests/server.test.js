@@ -112,3 +112,17 @@ test("Modifier une séance avec des données valides", async () => {
 
   expect(response.status).toBe(200);
 });
+test("Refuser une réservation avec une adresse e-mail invalide", async () => {
+  const response = await request(app)
+    .post("/reservations/confirmer")
+    .send({
+      seanceId: 1,
+      placesIds: [1],
+      nom: "Dupont",
+      prenom: "Jean",
+      email: "adresse-invalide",
+      telephone: "0612345678"
+    });
+
+  expect(response.status).toBe(400);
+});

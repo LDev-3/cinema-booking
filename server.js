@@ -876,12 +876,23 @@ app.get("/seances/:id/places/reservees", (req, res) => {
 app.post("/reservations/confirmer", (req, res) => {
   const { seanceId, placesIds, nom, prenom, email, telephone } = req.body;
 
-  if (!seanceId || !Array.isArray(placesIds) || placesIds.length === 0 ||
-      !nom || !prenom || !email || !telephone) {
-    return res.status(400).json({
-      message: "Informations de réservation incomplètes"
-    });
-  }
+ const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+  typeof email === "string" ? email.trim() : ""
+);
+
+if (
+  !seanceId ||
+  !Array.isArray(placesIds) ||
+  placesIds.length === 0 ||
+  !nom?.trim() ||
+  !prenom?.trim() ||
+  !emailValide ||
+  !telephone?.trim()
+) {
+  return res.status(400).json({
+    message: "Informations de réservation invalides ou incomplètes"
+  });
+}
 
   let seanceTrouvee = null;
 
