@@ -27,7 +27,7 @@ utilisateurs.push({
   id: prochainIdUtilisateur++,
   nom: "User",
   prenom: "Test",
-  email: "Test-user@cinema.com",
+  email: "test-user@cinema.com",
   motDePasse: bcrypt.hashSync("TestUser2026!", 10),
   role: "utilisateur",
   dateCreation: new Date().toISOString()
