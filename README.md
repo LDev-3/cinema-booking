@@ -1,9 +1,4 @@
 
----
-title: Cinema Booking API
-sdk: docker
-app_port: 7860
----
 
 # cinema-booking
 Application de réservation de cinéma
