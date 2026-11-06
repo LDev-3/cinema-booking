@@ -16,8 +16,8 @@ let adminTest = {
   id: 0,
   nom: "Admin",
   prenom: "Cinema",
-  email: "admin@cinema.com",
-  motDePasse: bcrypt.hashSync("Admin2026!", 10),
+  email: "dev-admin@cinema.com",
+  motDePasse: bcrypt.hashSync("DevAdmin2026!", 10),
   role: "admin",
   dateCreation: new Date().toISOString()
 };
@@ -27,8 +27,8 @@ utilisateurs.push({
   id: prochainIdUtilisateur++,
   nom: "User",
   prenom: "Test",
-  email: "user@cinema.com",
-  motDePasse: bcrypt.hashSync("User2026!", 10),
+  email: "Test-user@cinema.com",
+  motDePasse: bcrypt.hashSync("TestUser2026!", 10),
   role: "utilisateur",
   dateCreation: new Date().toISOString()
 });
