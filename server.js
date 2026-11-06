@@ -23,9 +23,18 @@ let adminTest = {
 };
 
 utilisateurs.push(adminTest);
+utilisateurs.push({
+  id: prochainIdUtilisateur++,
+  nom: "User",
+  prenom: "Test",
+  email: "user@cinema.com",
+  motDePasse: bcrypt.hashSync("User2026!", 10),
+  role: "utilisateur",
+  dateCreation: new Date().toISOString()
+});
 let notifications = [];
 let prochainIdNotification = 1;
-const JWT_SECRET = "cinema_booking_secret_2026_a_changer";
+const JWT_SECRET = process.env.JWT_SECRET || "cinema_booking_secret_2026_a_changer";
 app.use(express.json());
 const swaggerOptions = {
   definition: {
@@ -35,11 +44,7 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "Documentation de l'API de réservation de cinéma"
     },
-    servers: [
-      {
-        url: "http://localhost:3000"
-      }
-    ]
+    servers: [{ url: "/" }]
   },
   apis: ["./server.js"]
 };
@@ -47,7 +52,7 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 function verifierToken(req, res, next) {
   const authorization = req.headers.authorization;
 

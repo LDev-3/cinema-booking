@@ -1,8 +1,14 @@
+
+---
+title: Cinema Booking API
+sdk: docker
+app_port: 7860
+---
+
 # cinema-booking
 Application de réservation de cinéma
 
-
-##Convention de nommage des branches
+## Convention de nommage des branches
 
 main : branche contenant la version stable de l'application.
 
@@ -14,7 +20,7 @@ fix/nom-correction : pour corriger un problème.
 
 hotfix/nom-correction-urgente : pour corriger rapidement un problème critique.
 
-##Règles à respecter
+## Règles à respecter
 
 Utiliser des lettres minuscules.
 
@@ -24,7 +30,7 @@ Utiliser un préfixe adapté au type de travail.
 
 Éviter les espaces et les accents.
 
-##Exemples
+## Exemples
 
 feature/recherche-films
 
@@ -33,3 +39,20 @@ feature/reservation-seances
 fix/selection-sieges
 
 hotfix/erreur-paiement
+
+## Installation et lancement
+
+npm install
+npm start
+npm test
+npm run lint
+
+## Comptes de test
+
+Admin : admin@cinema.com / Admin2026!
+User : user@cinema.com / User2026!
+
+## Liens
+
+Application : (à compléter après le déploiement)
+Documentation Swagger : (URL de l'application)/api-docs
