@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const supabase = require("./supabase");
 let reservations = [];
 let prochainIdReservation = 1;
 let billets = [];
@@ -271,9 +272,55 @@ app.get("/salles", (req, res) => {
     salles
   });
 });
-app.get("/films", (req, res) => {
-  res.json(films);
-}); 
+
+app.get("/films", async (req, res) => {
+  const { data, error } = await supabase
+    .from("films")
+    .select(`
+      id,
+      titre,
+      description,
+      duree,
+      genre,
+      actif,
+      seances (
+        id,
+        date_seance,
+        heure,
+        capacite,
+        salles (nom),
+        places (
+          id,
+          rangee,
+          numero,
+          statut
+        )
+      )
+    `)
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des films"
+    });
+  }
+
+  const filmsAvecSeances = data.map((film) => ({
+    ...film,
+    seances: (film.seances || []).map((seance) => ({
+      id: seance.id,
+      date: seance.date_seance,
+      heure: seance.heure,
+      salle: seance.salles?.nom,
+      capacite: seance.capacite,
+      places: seance.places || []
+    }))
+  }));
+
+  return res.json(filmsAvecSeances);
+});
+
 app.post("/films", (req, res) => {
   const { titre, description, duree, genre } = req.body;
 
