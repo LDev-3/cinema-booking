@@ -355,19 +355,71 @@ app.post("/films", (req, res) => {
     film: nouveauFilm
   });
 });
-app.get("/films/:id", (req, res) => {
-  const id = parseInt(req.params.id);
 
-  const film = films.find((film) => film.id === id);
+app.get("/films/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  if (!film) {
+  if (isNaN(id)) {
+    return res.status(400).json({
+      message: "Identifiant du film invalide"
+    });
+  }
+
+  const { data: film, error } = await supabase
+    .from("films")
+    .select(`
+      id,
+      titre,
+      description,
+      duree,
+      genre,
+      actif,
+      seances (
+        id,
+        date_seance,
+        heure,
+        capacite,
+        salles (nom),
+        places (
+          id,
+          rangee,
+          numero,
+          statut
+        )
+      )
+    `)
+    .eq("id", id)
+    .single();
+    console.log("Film récupéré :", film);
+    console.log("Erreur Supabase :", error);
+  if (error || !film) {
+    if (error && error.code !== "PGRST116") {
+      console.error("Erreur Supabase :", error.message);
+      return res.status(500).json({
+        message: "Erreur lors de la récupération du film"
+      });
+    }
+
     return res.status(404).json({
       message: "Film introuvable"
     });
   }
 
-  res.json(film);
+  const filmAvecSeances = {
+    ...film,
+    seances: (film.seances || []).map((seance) => ({
+      id: seance.id,
+      date: seance.date_seance,
+      heure: seance.heure,
+      salle: seance.salles?.nom,
+      capacite: seance.capacite,
+      places: seance.places || []
+    }))
+  };
+
+  return res.json(filmAvecSeances);
 });
+
 app.post("/films/:id/seances", (req, res) => {
   const filmId = parseInt(req.params.id);
   const film = films.find((f) => f.id === filmId);
