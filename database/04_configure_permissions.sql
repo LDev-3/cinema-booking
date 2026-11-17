@@ -55,3 +55,7 @@ ON public.films
 FOR INSERT
 TO anon
 WITH CHECK (true);
+-- Activer la sécurité RLS sur les nouvelles tables
+ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reservation_places ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billets ENABLE ROW LEVEL SECURITY;

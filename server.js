@@ -6,36 +6,12 @@ const app = express();
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const supabase = require("./supabase");
-let reservations = [];
-let prochainIdReservation = 1;
-let billets = [];
-let prochainIdBillet = 1;
-let utilisateurs = [];
-let prochainIdUtilisateur = 1;
-// Administrateur temporaire pour les tests
-let adminTest = {
-  id: 0,
-  nom: "Admin",
-  prenom: "Cinema",
-  email: "dev-admin@cinema.com",
-  motDePasse: bcrypt.hashSync("DevAdmin2026!", 10),
-  role: "admin",
-  dateCreation: new Date().toISOString()
-};
 
-utilisateurs.push(adminTest);
-utilisateurs.push({
-  id: prochainIdUtilisateur++,
-  nom: "User",
-  prenom: "Test",
-  email: "test-user@cinema.com",
-  motDePasse: bcrypt.hashSync("TestUser2026!", 10),
-  role: "utilisateur",
-  dateCreation: new Date().toISOString()
-});
-let notifications = [];
-let prochainIdNotification = 1;
-const JWT_SECRET = process.env.JWT_SECRET || "cinema_booking_secret_2026_a_changer";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("La variable JWT_SECRET est obligatoire.");
+}
 app.use(express.json());
 const swaggerOptions = {
   definition: {
@@ -75,284 +51,296 @@ function verifierToken(req, res, next) {
     });
   }
 }
-const films = [
-  {
-    id: 1,
-    titre: "Jungle",
-    description: "Un film d'aventure.",
-    duree: 120,
-    genre: "Aventure",
-    actif: true,
-   seances: [
- {
-  id: 1,
-  date: "2026-11-01",
-  heure: "14:00",
-  salle: "Salle 1",
-  capacite: 100,
-  places: [
-    { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-    { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-    { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-    { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-    { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-  ]
-},
-  {
-    id: 2,
-    date: "2026-11-01",
-    heure: "18:00",
-    salle: "Salle 2",
-    capacite: 80,
-    places: [
-      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-    ]
+
+function verifierAdmin(req, res, next) {
+  if (!req.utilisateur || req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
   }
-]
-  },
-  {
-    id: 2,
-    titre: "King",
-    description: "Un film dramatique.",
-    duree: 105,
-    genre: "Drame",
-    actif: true,
-    seances: [
-    {
-      id: 3,
-      date: "2026-11-02",
-      heure: "16:00",
-      salle: "Salle 1",
-      capacite: 100,
-      places: [
-      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-    ]
-    },
-    {
-      id: 4,
-      date: "2026-11-02",
-      heure: "20:00",
-      salle: "Salle 2",
-      capacite: 80,
-      places: [
-      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-    ]
+
+  next();
+}
+
+
+app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const nomSalle = decodeURIComponent(req.params.nom);
+    const { capacite } = req.body;
+
+    if (!Number.isInteger(capacite) || capacite <= 0) {
+      return res.status(400).json({
+        message: "La capacité doit être un entier positif"
+      });
     }
-  ]
-  },
-  {
-    id: 3,
-    titre: "Le Roi Lion",
-    description: "L'histoire de Simba.",
-    duree: 118,
-    genre: "Animation",
-    actif: true,
-  seances: [
-    {
-      id: 5,
-      date: "2026-11-03",
-      heure: "15:00",
-      salle: "Salle 1",
-      capacite: 100,
-      places: [
-        { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-        { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-        { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-        { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-        { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-      ]
-    },
-    {
-      id: 6,
-      date: "2026-11-03",
-      heure: "19:00",
-      salle: "Salle 2",
-      capacite: 80,
-      places: [
-      { id: 1, rangee: "A", numero: 1, statut: "disponible" },
-      { id: 2, rangee: "A", numero: 2, statut: "disponible" },
-      { id: 3, rangee: "A", numero: 3, statut: "reservee" },
-      { id: 4, rangee: "B", numero: 1, statut: "disponible" },
-      { id: 5, rangee: "B", numero: 2, statut: "reservee" }
-    ]
+
+    // Rechercher la salle dans Supabase
+    const { data: salle, error: erreurSalle } = await supabase
+      .from("salles")
+      .select("id, nom")
+      .eq("nom", nomSalle)
+      .single();
+
+    console.log("Nom de salle recherché :", nomSalle);
+        console.log("Résultat Supabase :", salle);
+        console.log("Erreur Supabase :", erreurSalle);
+
+        if (erreurSalle) {
+          throw erreurSalle;
+        }
+
+        if (!salle) {
+          return res.status(404).json({
+            message: "Salle introuvable"
+          });
+        }
+
+    // Récupérer les séances de cette salle
+    const { data: seances, error: erreurSeances } = await supabase
+      .from("seances")
+      .select("id")
+      .eq("salle_id", salle.id);
+
+    if (erreurSeances) throw erreurSeances;
+
+    if (!seances || seances.length === 0) {
+      return res.status(404).json({
+        message: "Aucune séance trouvée pour cette salle"
+      });
     }
-  ]
-  }
-];
-let prochainIdSeance = Math.max(
-  ...films.flatMap(film => film.seances.map(seance => seance.id))
-) + 1;
-let prochainIdFilm = Math.max(...films.map(film => film.id)) + 1;
-app.put("/salles/:nom/capacite", (req, res) => {
-  const nomSalle = decodeURIComponent(req.params.nom);
-  const { capacite } = req.body;
 
-  if (!Number.isInteger(capacite) || capacite <= 0) {
-    return res.status(400).json({
-      message: "La capacité doit être un entier positif"
-    });
-  }
+    // Vérifier les places réservées pour chaque séance
+    for (const seance of seances) {
+      const { data: placesReservees, error } = await supabase
+        .from("places")
+        .select("id")
+        .eq("seance_id", seance.id)
+        .eq("statut", "reservee");
 
-  const seancesSalle = films.flatMap((film) =>
-    film.seances.filter((seance) => seance.salle === nomSalle)
-  );
+      if (error) throw error;
 
-  if (seancesSalle.length === 0) {
-    return res.status(404).json({
-      message: "Salle introuvable"
-    });
-  }
-
-  const placesReservees = seancesSalle.map((seance) =>
-    seance.places.filter((place) => place.statut === "reservee").length
-  );
-
-  if (placesReservees.some((nombre) => capacite < nombre)) {
-    return res.status(400).json({
-      message: "La capacité ne peut pas être inférieure au nombre de places réservées"
-    });
-  }
-
-  seancesSalle.forEach((seance) => {
-    const reservees = seance.places.filter(
-      (place) => place.statut === "reservee"
-    );
-
-    seance.capacite = capacite;
-    seance.places = reservees;
-
-    for (let i = 0; i < capacite; i++) {
-      const rangee = String.fromCharCode(65 + Math.floor(i / 10));
-      const numero = (i % 10) + 1;
-
-      const dejaReservee = reservees.some(
-        (place) => place.rangee === rangee && place.numero === numero
-      );
-
-      if (!dejaReservee) {
-        seance.places.push({
-          id: i + 1,
-          rangee,
-          numero,
-          statut: "disponible"
+      if (capacite < placesReservees.length) {
+        return res.status(400).json({
+          message: "La capacité ne peut pas être inférieure au nombre de places réservées"
         });
       }
     }
-  });
 
-  return res.status(200).json({
-    message: "Capacité de la salle modifiée avec succès",
-    salle: nomSalle,
-    capacite
-  });
-});
-app.get("/salles", (req, res) => {
-  const salles = [
-    ...new Set(
-      films.flatMap((film) =>
-        film.seances.map((seance) => seance.salle)
-      )
-    )
-  ];
+    // Mettre à jour la capacité de chaque séance
+    for (const seance of seances) {
+      const { error } = await supabase
+        .from("seances")
+        .update({ capacite })
+        .eq("id", seance.id);
 
-  return res.status(200).json({
-    message: "Liste des salles récupérée avec succès",
-    salles
-  });
-});
+      if (error) throw error;
 
-app.get("/films", async (req, res) => {
-  const { data, error } = await supabase
-    .from("films")
-    .select(`
-      id,
-      titre,
-      description,
-      duree,
-      genre,
-      actif,
-      seances (
-        id,
-        date_seance,
-        heure,
-        capacite,
-        salles (nom),
-        places (
-          id,
-          rangee,
-          numero,
-          statut
-        )
-      )
-    `)
-    .order("id", { ascending: true });
+      // Supprimer uniquement les places disponibles
+      const { error: erreurSuppression } = await supabase
+        .from("places")
+        .delete()
+        .eq("seance_id", seance.id)
+        .eq("statut", "disponible");
 
-  if (error) {
-    console.error("Erreur Supabase :", error.message);
+      if (erreurSuppression) throw erreurSuppression;
+
+      // Recréer les places disponibles sans toucher aux places réservées
+      const { data: reservees, error: erreurReservees } = await supabase
+        .from("places")
+        .select("rangee, numero")
+        .eq("seance_id", seance.id)
+        .eq("statut", "reservee");
+
+      if (erreurReservees) throw erreurReservees;
+
+      const placesExistantes = new Set(
+        reservees.map(p => `${p.rangee}-${p.numero}`)
+      );
+
+      const nouvellesPlaces = [];
+
+      for (let i = 0; i < capacite; i++) {
+        const rangee = String.fromCharCode(65 + Math.floor(i / 10));
+        const numero = (i % 10) + 1;
+
+        if (!placesExistantes.has(`${rangee}-${numero}`)) {
+          nouvellesPlaces.push({
+            seance_id: seance.id,
+            rangee,
+            numero,
+            statut: "disponible"
+          });
+        }
+      }
+
+      if (nouvellesPlaces.length > 0) {
+        const { error: erreurInsertion } = await supabase
+          .from("places")
+          .insert(nouvellesPlaces);
+
+        if (erreurInsertion) throw erreurInsertion;
+      }
+    }
+
+    return res.status(200).json({
+      message: "Capacité de la salle modifiée avec succès",
+      salle: nomSalle,
+      capacite
+    });
+
+  } catch (error) {
+    console.error("Erreur modification capacité :", error);
+
     return res.status(500).json({
-      message: "Erreur lors de la récupération des films"
+      message: "Erreur lors de la modification de la capacité"
     });
   }
+});
+app.get("/salles", async (req, res) => {
+  try {
+    const { data: salles, error } = await supabase
+      .from("salles")
+      .select("id, nom, capacite")
+      .order("id", { ascending: true });
 
-  const filmsAvecSeances = data.map((film) => ({
-    ...film,
-    seances: (film.seances || []).map((seance) => ({
-      id: seance.id,
-      date: seance.date_seance,
-      heure: seance.heure,
-      salle: seance.salles?.nom,
-      capacite: seance.capacite,
-      places: seance.places || []
-    }))
-  }));
+    if (error) {
+      console.error("Erreur Supabase :", error.message);
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des salles"
+      });
+    }
 
-  return res.json(filmsAvecSeances);
+    return res.status(200).json({
+      message: "Liste des salles récupérée avec succès",
+      salles
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Erreur serveur"
+    });
+  }
 });
 
-app.post("/films", (req, res) => {
+app.post("/films", verifierToken, verifierAdmin, async (req, res) => {
   const { titre, description, duree, genre } = req.body;
 
   // Vérifier les champs obligatoires
-  if (!titre || !description || !duree || !genre) {
+  if (
+    !titre || typeof titre !== "string" || !titre.trim() ||
+    !description || typeof description !== "string" || !description.trim() ||
+    !duree || !genre || typeof genre !== "string" || !genre.trim()
+  ) {
     return res.status(400).json({
       message: "Tous les champs sont obligatoires"
     });
   }
 
   // Vérifier la durée
-  if (!Number.isInteger(duree) || duree <= 0) {
+  if (typeof duree !== "number" || !Number.isInteger(duree) || duree <= 0) {
     return res.status(400).json({
       message: "La durée doit être un nombre entier positif"
     });
   }
 
-  // Créer le nouveau film
-  const nouveauFilm = {
-    id: prochainIdFilm++,
-    titre: titre.trim(),
-    description: description.trim(),
-    duree,
-    genre: genre.trim(),
-    seances: []
-  };
+  // Enregistrer le film dans Supabase
+  const { data: nouveauFilm, error } = await supabase
+    .from("films")
+    .insert({
+      titre: titre.trim(),
+      description: description.trim(),
+      duree,
+      genre: genre.trim(),
+      actif: true
+    })
+    .select()
+    .single();
 
-  films.push(nouveauFilm);
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de l'ajout du film"
+    });
+  }
 
   return res.status(201).json({
     message: "Film ajouté avec succès",
-    film: nouveauFilm
+    film: {
+      ...nouveauFilm,
+      seances: []
+    }
+  });
+});
+
+app.get("/films/recherche", async (req, res) => {
+  const recherche = req.query.titre;
+
+  if (!recherche) {
+    return res.status(400).json({
+      message: "Veuillez saisir un titre de film"
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("films")
+    .select("*")
+    .ilike("titre", `%${recherche}%`);
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la recherche des films"
+    });
+  }
+
+  return res.status(200).json(data);
+});
+app.get("/seances/:id/places/reservees", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      message: "Identifiant de séance invalide"
+    });
+  }
+
+  const { data: seance, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      salles (nom),
+      places (
+        id,
+        rangee,
+        numero,
+        statut
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des places"
+    });
+  }
+
+  if (!seance) {
+    return res.status(404).json({
+      message: "Séance introuvable"
+    });
+  }
+
+  const placesReservees = (seance.places || []).filter(
+    (place) => place.statut === "reservee"
+  );
+
+  return res.status(200).json({
+    seanceId: seance.id,
+    salle: seance.salles?.nom,
+    placesReservees
   });
 });
 
@@ -390,8 +378,6 @@ app.get("/films/:id", async (req, res) => {
     `)
     .eq("id", id)
     .single();
-    console.log("Film récupéré :", film);
-    console.log("Erreur Supabase :", error);
   if (error || !film) {
     if (error && error.code !== "PGRST116") {
       console.error("Erreur Supabase :", error.message);
@@ -420,322 +406,546 @@ app.get("/films/:id", async (req, res) => {
   return res.json(filmAvecSeances);
 });
 
-app.post("/films/:id/seances", (req, res) => {
-  const filmId = parseInt(req.params.id);
-  const film = films.find((f) => f.id === filmId);
 
-  if (!film) {
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
+app.post("/films/:id/seances", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const filmId = parseInt(req.params.id, 10);
+    const { date, heure, salle, capacite } = req.body;
 
-  const { date, heure, salle, capacite } = req.body;
-
-  if (!date || !heure || !salle || !capacite) {
-    return res.status(400).json({
-      message: "Tous les champs sont obligatoires"
-    });
-  }
-
-  if (
-    typeof date !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    typeof heure !== "string" ||
-    !/^([01]\d|2[0-3]):[0-5]\d$/.test(heure) ||
-    typeof salle !== "string" ||
-    !salle.trim() ||
-    !Number.isInteger(capacite) ||
-    capacite <= 0
-  ) {
-    return res.status(400).json({
-      message: "Les informations de la séance sont invalides"
-    });
-  }
-
-  const places = [];
-
-  for (let i = 0; i < capacite; i++) {
-    places.push({
-      id: i + 1,
-      rangee: String.fromCharCode(65 + Math.floor(i / 10)),
-      numero: (i % 10) + 1,
-      statut: "disponible"
-    });
-  }
-
-  const nouvelleSeance = {
-    id: prochainIdSeance++,
-    date,
-    heure,
-    salle: salle.trim(),
-    capacite,
-    places
-  };
-
-  film.seances.push(nouvelleSeance);
-
-  return res.status(201).json({
-    message: "Séance créée avec succès",
-    seance: nouvelleSeance
-  });
-});
-app.put("/seances/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const film = films.find((f) =>
-    f.seances.some((s) => s.id === id)
-  );
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  const seance = film.seances.find((s) => s.id === id);
-
-  const { date, heure, salle, capacite } = req.body;
-
-  if (!date || !heure || !salle || !capacite) {
-    return res.status(400).json({
-      message: "Tous les champs sont obligatoires"
-    });
-  }
-
-  if (
-    typeof date !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    typeof heure !== "string" ||
-    !/^([01]\d|2[0-3]):[0-5]\d$/.test(heure) ||
-    typeof salle !== "string" ||
-    !salle.trim() ||
-    !Number.isInteger(capacite) ||
-    capacite <= 0 ||
-    capacite < seance.places.filter(
-      (p) => p.statut === "reservee"
-    ).length
-  ) {
-    return res.status(400).json({
-      message: "Les informations de la séance sont invalides"
-    });
-  }
-
-  seance.date = date;
-  seance.heure = heure;
-  seance.salle = salle.trim();
-
-  const placesReservees = seance.places.filter(
-    (p) => p.statut === "reservee"
-  );
-
-  seance.capacite = capacite;
-
-  seance.places = placesReservees;
-
-  for (let i = placesReservees.length; i < capacite; i++) {
-    seance.places.push({
-      id: i + 1,
-      rangee: String.fromCharCode(65 + Math.floor(i / 10)),
-      numero: (i % 10) + 1,
-      statut: "disponible"
-    });
-  }
-
-  return res.status(200).json({
-    message: "Séance modifiée avec succès",
-    seance
-  });
-});
-app.put("/seances/:id/salle", (req, res) => {
-  const id = parseInt(req.params.id);
-  const { salle } = req.body;
-
-  const film = films.find((f) =>
-    f.seances.some((s) => s.id === id)
-  );
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  if (typeof salle !== "string" || !salle.trim()) {
-    return res.status(400).json({
-      message: "Le nom de la salle est obligatoire"
-    });
-  }
-
-  const seance = film.seances.find((s) => s.id === id);
-
-  const autreSeance = films.some((f) =>
-    f.seances.some((s) =>
-      s.id !== id &&
-      s.salle === salle.trim() &&
-      s.date === seance.date &&
-      s.heure === seance.heure &&
-      s.statut !== "annulee"
-    )
-  );
-
-  if (autreSeance) {
-    return res.status(409).json({
-      message: "Cette salle est déjà utilisée à cet horaire"
-    });
-  }
-
-  seance.salle = salle.trim();
-
-  return res.status(200).json({
-    message: "Salle associée à la séance avec succès",
-    seance
-  });
-});
-app.patch("/seances/:id/annuler", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const film = films.find((f) =>
-    f.seances.some((s) => s.id === id)
-  );
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  const seance = film.seances.find((s) => s.id === id);
-
-  if (seance.statut === "annulee") {
-    return res.status(400).json({
-      message: "Cette séance est déjà annulée"
-    });
-  }
-
-  seance.statut = "annulee";
-  seance.dateAnnulation = new Date().toISOString();
-
-  return res.status(200).json({
-    message: "Séance annulée avec succès",
-    seance
-  });
-});
-app.put("/films/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const film = films.find((f) => f.id === id);
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
-
-  const { titre, description, duree, genre } = req.body;
-
-  if (!titre || !description || !duree || !genre) {
-    return res.status(400).json({
-      message: "Tous les champs sont obligatoires"
-    });
-  }
-
-  if (
-    typeof titre !== "string" ||
-    typeof description !== "string" ||
-    typeof genre !== "string" ||
-    !Number.isInteger(duree) ||
-    duree <= 0 ||
-    !titre.trim() ||
-    !description.trim() ||
-    !genre.trim()
-  ) {
-    return res.status(400).json({
-      message: "Les informations du film sont invalides"
-    });
-  }
-
-  film.titre = titre.trim();
-  film.description = description.trim();
-  film.duree = duree;
-  film.genre = genre.trim();
-
-  return res.status(200).json({
-    message: "Film modifié avec succès",
-    film
-  });
-});
-app.patch("/films/:id/desactiver", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const film = films.find((f) => f.id === id);
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
-
-  if (!film.actif) {
-    return res.status(400).json({
-      message: "Ce film est déjà désactivé"
-    });
-  }
-
-  film.actif = false;
-
-  return res.status(200).json({
-    message: "Film désactivé avec succès",
-    film
-  });
-});
-app.get("/films/:id/seances", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const film = films.find((film) => film.id === id);
-
-  if (!film) {
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
-
-  res.json(film.seances);
-});
-app.post("/reservations/selection-seance", (req, res) => {
-  const { seanceId } = req.body;
-
-  if (!seanceId) {
-    return res.status(400).json({
-      message: "Veuillez sélectionner une séance"
-    });
-  }
-
-  let seanceTrouvee = null;
-  let filmAssocie = null;
-
-  for (const film of films) {
-    const seance = film.seances.find(
-      (s) => s.id === parseInt(seanceId)
-    );
-
-    if (seance) {
-      seanceTrouvee = seance;
-      filmAssocie = film;
-      break;
+    if (!Number.isInteger(filmId) || filmId <= 0) {
+      return res.status(400).json({
+        message: "Identifiant du film invalide"
+      });
     }
+
+    if (
+      !date ||
+      !heure ||
+      !salle ||
+      capacite === undefined
+    ) {
+      return res.status(400).json({
+        message: "Tous les champs sont obligatoires"
+      });
+    }
+
+    if (
+      typeof date !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      typeof heure !== "string" ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(heure) ||
+      typeof salle !== "string" ||
+      !salle.trim() ||
+      !Number.isInteger(capacite) ||
+      capacite <= 0
+    ) {
+      return res.status(400).json({
+        message: "Les informations de la séance sont invalides"
+      });
+    }
+
+    // Vérifier que le film existe
+    const { data: film, error: erreurFilm } = await supabase
+      .from("films")
+      .select("id")
+      .eq("id", filmId)
+      .single();
+
+    if (erreurFilm || !film) {
+      return res.status(404).json({
+        message: "Film introuvable"
+      });
+    }
+
+    // Vérifier que la salle existe
+    const { data: salleTrouvee, error: erreurSalle } = await supabase
+      .from("salles")
+      .select("id, nom, capacite")
+      .eq("nom", salle.trim())
+      .single();
+
+    if (erreurSalle || !salleTrouvee) {
+      return res.status(404).json({
+        message: "Salle introuvable"
+      });
+    }
+
+    if (capacite > salleTrouvee.capacite) {
+      return res.status(400).json({
+        message: "La capacité dépasse celle de la salle"
+      });
+    }
+
+    // Vérifier si la salle est déjà utilisée à cet horaire
+    const { data: conflit, error: erreurConflit } = await supabase
+      .from("seances")
+      .select("id")
+      .eq("salle_id", salleTrouvee.id)
+      .eq("date_seance", date)
+      .eq("heure", heure)
+      .limit(1);
+
+    if (erreurConflit) throw erreurConflit;
+
+    if (conflit.length > 0) {
+      return res.status(409).json({
+        message: "Cette salle est déjà utilisée à cet horaire"
+      });
+    }
+
+    // Créer la séance
+    const { data: nouvelleSeance, error: erreurCreation } = await supabase
+      .from("seances")
+      .insert({
+        film_id: filmId,
+        salle_id: salleTrouvee.id,
+        date_seance: date,
+        heure,
+        capacite
+      })
+      .select()
+      .single();
+
+    if (erreurCreation) throw erreurCreation;
+
+    // Préparer les places
+    const places = [];
+
+    for (let i = 0; i < capacite; i++) {
+      places.push({
+        seance_id: nouvelleSeance.id,
+        rangee: String.fromCharCode(65 + Math.floor(i / 10)),
+        numero: (i % 10) + 1,
+        statut: "disponible"
+      });
+    }
+
+    // Insérer les places
+    const { error: erreurPlaces } = await supabase
+      .from("places")
+      .insert(places);
+
+    if (erreurPlaces) {
+      // Supprimer la séance si la création des places échoue
+      const { error: erreurSuppression } = await supabase
+        .from("seances")
+        .delete()
+        .eq("id", nouvelleSeance.id);
+
+      if (erreurSuppression) {
+        console.error("Erreur lors du nettoyage :", erreurSuppression);
+      }
+
+      throw erreurPlaces;
+    }
+
+    return res.status(201).json({
+      message: "Séance créée avec succès",
+      seance: {
+        ...nouvelleSeance,
+        salle: salleTrouvee.nom
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur création séance :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la création de la séance"
+    });
+  }
+});
+
+
+app.put("/seances/:id", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { date, heure, salle, capacite } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de séance invalide"
+      });
+    }
+
+    if (
+      !date ||
+      !heure ||
+      !salle ||
+      !Number.isInteger(capacite) ||
+      capacite <= 0
+    ) {
+      return res.status(400).json({
+        message: "Les informations de la séance sont invalides"
+      });
+    }
+
+    // Rechercher la salle dans Supabase
+    const { data: salleTrouvee, error: erreurSalle } = await supabase
+      .from("salles")
+      .select("id")
+      .eq("nom", salle.trim())
+      .single();
+
+    if (erreurSalle || !salleTrouvee) {
+      return res.status(404).json({
+        message: "Salle introuvable"
+      });
+    }
+
+    // Modifier la séance et ses places via la fonction SQL
+    const { data, error } = await supabase.rpc("modifier_seance", {
+      p_seance_id: id,
+      p_date_seance: date,
+      p_heure: heure,
+      p_salle_id: salleTrouvee.id,
+      p_capacite: capacite
+    });
+
+    if (error) {
+      console.error("Erreur modification séance :", error);
+
+      if (error.message.includes("introuvable")) {
+        return res.status(404).json({ message: error.message });
+      }
+
+      if (
+        error.message.includes("capacité") ||
+        error.message.includes("utilisée")
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      throw error;
+    }
+
+    return res.status(200).json(data);
+
+  } catch (error) {
+    console.error("Erreur modification séance :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la modification de la séance"
+    });
+  }
+});
+
+
+app.put("/seances/:id/salle", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { salle } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de séance invalide"
+      });
+    }
+
+    if (typeof salle !== "string" || !salle.trim()) {
+      return res.status(400).json({
+        message: "Le nom de la salle est obligatoire"
+      });
+    }
+
+    // Vérifier que la séance existe
+    const { data: seance, error: erreurSeance } = await supabase
+      .from("seances")
+      .select("id, date_seance, heure, salle_id")
+      .eq("id", id)
+      .single();
+
+    if (erreurSeance || !seance) {
+      return res.status(404).json({
+        message: "Séance introuvable"
+      });
+    }
+
+    // Rechercher la nouvelle salle
+    const { data: salleTrouvee, error: erreurSalle } = await supabase
+      .from("salles")
+      .select("id, nom")
+      .eq("nom", salle.trim())
+      .single();
+
+    if (erreurSalle || !salleTrouvee) {
+      return res.status(404).json({
+        message: "Salle introuvable"
+      });
+    }
+
+    // Vérifier que la salle est libre à cet horaire
+    const { data: autreSeance, error: erreurConflit } = await supabase
+      .from("seances")
+      .select("id")
+      .eq("salle_id", salleTrouvee.id)
+      .eq("date_seance", seance.date_seance)
+      .eq("heure", seance.heure)
+      .neq("id", id)
+      .limit(1);
+
+    if (erreurConflit) throw erreurConflit;
+
+    if (autreSeance.length > 0) {
+      return res.status(409).json({
+        message: "Cette salle est déjà utilisée à cet horaire"
+      });
+    }
+
+    // Mettre à jour la salle de la séance
+    const { error: erreurMiseAJour } = await supabase
+      .from("seances")
+      .update({ salle_id: salleTrouvee.id })
+      .eq("id", id);
+
+    if (erreurMiseAJour) throw erreurMiseAJour;
+
+    return res.status(200).json({
+      message: "Salle associée à la séance avec succès",
+      seanceId: id,
+      salle: salleTrouvee.nom
+    });
+
+  } catch (error) {
+    console.error("Erreur changement de salle :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors du changement de salle"
+    });
+  }
+});
+
+
+app.patch("/seances/:id/annuler", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de séance invalide"
+      });
+    }
+
+    // Rechercher la séance dans Supabase
+    const { data: seance, error: erreurSeance } = await supabase
+      .from("seances")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (erreurSeance || !seance) {
+      return res.status(404).json({
+        message: "Séance introuvable"
+      });
+    }
+
+    // Vérifier si la séance est déjà annulée
+    if (seance.statut === "annulee") {
+      return res.status(400).json({
+        message: "Cette séance est déjà annulée"
+      });
+    }
+
+    // Annuler la séance
+    const { data: seanceAnnulee, error: erreurMiseAJour } = await supabase
+      .from("seances")
+      .update({
+        statut: "annulee",
+        date_annulation: new Date().toISOString()
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (erreurMiseAJour) throw erreurMiseAJour;
+
+    return res.status(200).json({
+      message: "Séance annulée avec succès",
+      seance: seanceAnnulee
+    });
+
+  } catch (error) {
+    console.error("Erreur annulation séance :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de l'annulation de la séance"
+    });
+  }
+});
+
+
+// Supprimer un film
+app.delete("/films/:id", verifierToken, verifierAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+
+  if (isNaN(id)) {
+    return res.status(400).json({
+      message: "Identifiant du film invalide"
+    });
   }
 
-  if (!seanceTrouvee) {
+  // Supprimer le film dans Supabase
+  const { data: filmSupprime, error } = await supabase
+    .from("films")
+    .delete()
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la suppression du film"
+    });
+  }
+
+  if (!filmSupprime) {
+    return res.status(404).json({
+      message: "Film introuvable"
+    });
+  }
+
+  return res.status(200).json({
+    message: "Film supprimé avec succès",
+    film: filmSupprime
+  });
+});
+
+
+app.patch("/films/:id/desactiver", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const { data: film, error } = await supabase
+      .from("films")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !film) {
+      return res.status(404).json({
+        message: "Film introuvable"
+      });
+    }
+
+    if (!film.actif) {
+      return res.status(400).json({
+        message: "Ce film est déjà désactivé"
+      });
+    }
+
+    const { data: filmDesactive, error: erreurUpdate } = await supabase
+      .from("films")
+      .update({ actif: false })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (erreurUpdate) throw erreurUpdate;
+
+    return res.status(200).json({
+      message: "Film désactivé avec succès",
+      film: filmDesactive
+    });
+
+  } catch (error) {
+    console.error("Erreur désactivation film :", error);
+    return res.status(500).json({
+      message: "Erreur lors de la désactivation du film"
+    });
+  }
+});
+
+
+app.get("/films/:id/seances", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const { data: film, error: erreurFilm } = await supabase
+      .from("films")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (erreurFilm || !film) {
+      return res.status(404).json({
+        message: "Film introuvable"
+      });
+    }
+
+    const { data: seances, error } = await supabase
+      .from("seances")
+      .select("*")
+      .eq("film_id", id)
+      .order("date_seance", { ascending: true });
+
+    if (error) throw error;
+
+    return res.status(200).json(seances);
+
+  } catch (error) {
+    console.error("Erreur récupération séances :", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des séances"
+    });
+  }
+});
+
+app.post("/reservations/selection-seance", async (req, res) => {
+  const { seanceId } = req.body;
+  const id = parseInt(seanceId, 10);
+
+  if (!seanceId || isNaN(id)) {
+    return res.status(400).json({
+      message: "Veuillez sélectionner une séance valide"
+    });
+  }
+
+  const { data: seance, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      date_seance,
+      heure,
+      capacite,
+      statut,
+      films (titre),
+      salles (nom),
+      places (
+        id,
+        rangee,
+        numero,
+        statut
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération de la séance"
+    });
+  }
+
+  if (!seance) {
     return res.status(404).json({
       message: "Séance introuvable"
     });
   }
 
-  res.json({
+  return res.status(200).json({
     message: "Séance sélectionnée avec succès",
-    film: filmAssocie.titre,
-    seance: seanceTrouvee
+    film: seance.films?.titre,
+    seance: {
+      id: seance.id,
+      date: seance.date_seance,
+      heure: seance.heure,
+      salle: seance.salles?.nom,
+      capacite: seance.capacite,
+      statut: seance.statut,
+      places: seance.places
+    }
   });
 });
 app.post("/reservations/informations-client", (req, res) => {
@@ -765,37 +975,94 @@ app.post("/reservations/informations-client", (req, res) => {
     }
   });
 });
-app.get("/seances/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+app.get("/seances/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find((s) => s.id === id);
-
-    if (seance) {
-      seanceTrouvee = {
-        film: film.titre,
-        ...seance
-      };
-      break;
-    }
+  if (isNaN(id)) {
+    return res.status(400).json({
+      message: "Identifiant de séance invalide"
+    });
   }
 
-  if (!seanceTrouvee) {
+  const { data: seance, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      film_id,
+      salle_id,
+      date_seance,
+      heure,
+      capacite,
+      films (
+        titre
+      ),
+      salles (
+        nom
+      ),
+      places (
+        id,
+        rangee,
+        numero,
+        statut
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération de la séance"
+    });
+  }
+
+  if (!seance) {
     return res.status(404).json({
       message: "Séance introuvable"
     });
   }
 
-  res.json(seanceTrouvee);
+  return res.status(200).json({
+    id: seance.id,
+    film: seance.films?.titre,
+    salle: seance.salles?.nom,
+    date: seance.date_seance,
+    heure: seance.heure,
+    capacite: seance.capacite,
+    places: seance.places
+  });
 });
-app.get("/seances/:id/places/etat", (req, res) => {
-  const id = parseInt(req.params.id);
+app.get("/seances/:id/places/etat", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  const seance = films
-    .flatMap((film) => film.seances)
-    .find((seance) => seance.id === id);
+  if (isNaN(id)) {
+    return res.status(400).json({
+      message: "Identifiant de séance invalide"
+    });
+  }
+
+  const { data: seance, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      capacite,
+      salles (nom),
+      places (
+        id,
+        rangee,
+        numero,
+        statut
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des places"
+    });
+  }
 
   if (!seance) {
     return res.status(404).json({
@@ -804,17 +1071,17 @@ app.get("/seances/:id/places/etat", (req, res) => {
   }
 
   const placesDisponibles = seance.places.filter(
-    (place) => place.statut === "disponible"
+    place => place.statut === "disponible"
   );
 
   const placesOccupees = seance.places.filter(
-    (place) => place.statut === "reservee"
+    place => place.statut === "reservee"
   );
 
   return res.status(200).json({
     message: "État des places récupéré avec succès",
     seanceId: seance.id,
-    salle: seance.salle,
+    salle: seance.salles?.nom,
     capacite: seance.capacite,
     nombrePlacesDisponibles: placesDisponibles.length,
     nombrePlacesOccupees: placesOccupees.length,
@@ -822,318 +1089,230 @@ app.get("/seances/:id/places/etat", (req, res) => {
     placesOccupees
   });
 });
-app.get("/seances/:id/places", (req, res) => {
-  const id = parseInt(req.params.id);
+app.get("/seances/:id/places", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find((s) => s.id === id);
-
-    if (seance) {
-      seanceTrouvee = seance;
-      break;
-    }
+  if (isNaN(id)) {
+    return res.status(400).json({
+      message: "Identifiant de séance invalide"
+    });
   }
 
-  if (!seanceTrouvee) {
+  const { data: seance, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      salles (nom),
+      places (
+        id,
+        rangee,
+        numero,
+        statut
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des places"
+    });
+  }
+
+  if (!seance) {
     return res.status(404).json({
       message: "Séance introuvable"
     });
   }
 
-  res.json({
-    seanceId: seanceTrouvee.id,
-    salle: seanceTrouvee.salle,
-    places: seanceTrouvee.places
+  return res.status(200).json({
+    seanceId: seance.id,
+    salle: seance.salles?.nom,
+    places: seance.places
   });
 });
-app.get("/seances/:id/places/disponibles", (req, res) => {
-  const id = parseInt(req.params.id);
+app.post("/reservations/confirmer", async (req, res) => {
+  try {
+    const { seanceId, placesIds, nom, prenom, email, telephone } = req.body;
 
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find((s) => s.id === id);
-
-    if (seance) {
-      seanceTrouvee = seance;
-      break;
-    }
-  }
-
-  if (!seanceTrouvee) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  const placesDisponibles = seanceTrouvee.places.filter(
-    (place) => place.statut === "disponible"
-  );
-
-  res.json({
-    seanceId: seanceTrouvee.id,
-    salle: seanceTrouvee.salle,
-    placesDisponibles: placesDisponibles
-  });
-});
-app.get("/films/recherche", (req, res) => {
-  const recherche = req.query.titre;
-
-  if (!recherche) {
-    return res.status(400).json({
-      message: "Veuillez saisir un titre de film"
-    });
-  }
-
-  const resultats = films.filter((film) =>
-    film.titre.toLowerCase().includes(recherche.toLowerCase())
-  );
-
-  res.json(resultats);
-});
-app.post("/seances/:id/places/selection", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const { placesIds } = req.body;
-
-  if (!Array.isArray(placesIds) || placesIds.length === 0) {
-    return res.status(400).json({
-      message: "Veuillez sélectionner au moins une place"
-    });
-  }
-
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find((s) => s.id === id);
-
-    if (seance) {
-      seanceTrouvee = seance;
-      break;
-    }
-  }
-
-  if (!seanceTrouvee) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  const placesSelectionnees = seanceTrouvee.places.filter(
-    (place) => placesIds.includes(place.id)
-  );
-
-  if (placesSelectionnees.length !== placesIds.length) {
-    return res.status(400).json({
-      message: "Une ou plusieurs places sont introuvables"
-    });
-  }
-
-  const placesIndisponibles = placesSelectionnees.filter(
-    (place) => place.statut !== "disponible"
-  );
-
-  if (placesIndisponibles.length > 0) {
-    return res.status(400).json({
-      message: "Une ou plusieurs places ne sont pas disponibles"
-    });
-  }
-
-  res.json({
-    message: "Places sélectionnées avec succès",
-    seanceId: seanceTrouvee.id,
-    placesSelectionnees: placesSelectionnees
-  });
-});
-app.get("/seances/:id/places/reservees", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find((s) => s.id === id);
-
-    if (seance) {
-      seanceTrouvee = seance;
-      break;
-    }
-  }
-
-  if (!seanceTrouvee) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  const placesReservees = seanceTrouvee.places.filter(
-    (place) => place.statut === "reservee"
-  );
-
-  res.json({
-    seanceId: seanceTrouvee.id,
-    salle: seanceTrouvee.salle,
-    placesReservees: placesReservees
-  });
-});
-app.post("/reservations/confirmer", (req, res) => {
-  const { seanceId, placesIds, nom, prenom, email, telephone } = req.body;
-
- const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-  typeof email === "string" ? email.trim() : ""
-);
-
-if (
-  !seanceId ||
-  !Array.isArray(placesIds) ||
-  placesIds.length === 0 ||
-  !nom?.trim() ||
-  !prenom?.trim() ||
-  !emailValide ||
-  !telephone?.trim()
-) {
-  return res.status(400).json({
-    message: "Informations de réservation invalides ou incomplètes"
-  });
-}
-
-  let seanceTrouvee = null;
-
-  for (const film of films) {
-    const seance = film.seances.find(
-      (s) => s.id === parseInt(seanceId)
+    const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      typeof email === "string" ? email.trim() : ""
     );
 
-    if (seance) {
-      seanceTrouvee = seance;
-      break;
+    if (
+      !seanceId ||
+      !Array.isArray(placesIds) ||
+      placesIds.length === 0 ||
+      !placesIds.every(id => Number.isInteger(id)) ||
+      !nom?.trim() ||
+      !prenom?.trim() ||
+      !emailValide ||
+      !telephone?.trim()
+    ) {
+      return res.status(400).json({
+        message: "Informations de réservation invalides ou incomplètes"
+      });
     }
-  }
 
-  if (!seanceTrouvee) {
-    return res.status(404).json({
-      message: "Séance introuvable"
+    const { data, error } = await supabase.rpc(
+      "confirmer_reservation",
+      {
+        p_seance_id: Number(seanceId),
+        p_places_ids: placesIds,
+        p_nom: nom.trim(),
+        p_prenom: prenom.trim(),
+        p_email: email.trim().toLowerCase(),
+        p_telephone: telephone.trim()
+      }
+    );
+
+    if (error) {
+      console.error("Erreur Supabase :", error);
+
+      if (error.message.includes("Séance introuvable")) {
+        return res.status(404).json({
+          message: "Séance introuvable"
+        });
+      }
+
+      if (
+        error.message.includes("places") ||
+        error.message.includes("place")
+      ) {
+        return res.status(400).json({
+          message: error.message
+        });
+      }
+
+      return res.status(500).json({
+        message: "Erreur lors de la confirmation de la réservation"
+      });
+    }
+
+    return res.status(201).json({
+      message: "Réservation confirmée avec succès",
+      reservation: data
+    });
+
+  } catch (error) {
+    console.error("Erreur serveur :", error);
+
+    return res.status(500).json({
+      message: "Erreur interne du serveur"
     });
   }
-
-  const placesSelectionnees = seanceTrouvee.places.filter(
-    (place) => placesIds.includes(place.id)
-  );
-
-  if (placesSelectionnees.length !== placesIds.length) {
-    return res.status(400).json({
-      message: "Une ou plusieurs places sont introuvables"
-    });
-  }
-
-  if (placesSelectionnees.some((place) => place.statut !== "disponible")) {
-    return res.status(400).json({
-      message: "Une ou plusieurs places ne sont plus disponibles"
-    });
-  }
-
-  const idReservation = prochainIdReservation++;
-
-const reservation = {
-  id: idReservation,
-  numeroReservation: `RES-${String(idReservation).padStart(6, "0")}`,
-    seanceId: parseInt(seanceId),
-    client: { nom, prenom, email, telephone },
-    places: placesSelectionnees.map((place) => ({
-      id: place.id,
-      rangee: place.rangee,
-      numero: place.numero
-    })),
-    dateReservation: new Date().toISOString(),
-    statut: "confirmee"
-  };
-
-  placesSelectionnees.forEach((place) => {
-    place.statut = "reservee";
-  });
-
-  reservations.push(reservation);
-const utilisateur = utilisateurs.find(
-  (u) => u.email.trim().toLowerCase() ===
-    reservation.client.email.trim().toLowerCase()
-);
-
-notifications.push({
-  id: prochainIdNotification++,
-  utilisateurId: utilisateur ? utilisateur.id : null,
-  message: `Votre réservation ${reservation.numeroReservation} a été confirmée.`,
-  date: new Date().toISOString(),
-  lu: false
 });
-console.log("Notifications enregistrées :", notifications);
-console.log("Utilisateurs enregistrés :", utilisateurs);
-  res.status(201).json({
-    message: "Réservation confirmée avec succès",
-    reservation
-  });
-});
-app.post("/reservations/:id/billet", (req, res) => {
-  const reservationId = parseInt(req.params.id);
 
-  const reservation = reservations.find(
-    (r) => r.id === reservationId
-  );
 
-  if (!reservation) {
-    return res.status(404).json({
-      message: "Réservation introuvable"
+app.post("/reservations/:id/billet", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const reservationId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(reservationId) || reservationId <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de réservation invalide"
+      });
+    }
+
+    // Vérifier que la réservation existe
+    const { data: reservation, error: erreurReservation } =
+      await supabase
+        .from("reservations")
+        .select("*")
+        .eq("id", reservationId)
+        .maybeSingle();
+
+    if (erreurReservation) throw erreurReservation;
+
+    if (!reservation) {
+      return res.status(404).json({
+        message: "Réservation introuvable"
+      });
+    }
+
+    // Vérifier qu'un billet n'existe pas déjà
+    const { data: billetExistant, error: erreurBillet } =
+      await supabase
+        .from("billets")
+        .select("*")
+        .eq("reservation_id", reservationId)
+        .maybeSingle();
+
+    if (erreurBillet) throw erreurBillet;
+
+    if (billetExistant) {
+      return res.status(409).json({
+        message: "Un billet existe déjà pour cette réservation"
+      });
+    }
+
+    // Récupérer les places de la réservation
+    const { data: associations, error: erreurPlaces } =
+      await supabase
+        .from("reservation_places")
+        .select("places(id, rangee, numero)")
+        .eq("reservation_id", reservationId);
+
+    if (erreurPlaces) throw erreurPlaces;
+
+    const places = associations.map(a => a.places);
+
+    // Créer le billet
+    const numeroBillet =
+      `BIL-${String(reservationId).padStart(6, "0")}`;
+
+    const { data: nouveauBillet, error: erreurCreation } =
+      await supabase
+        .from("billets")
+        .insert({
+          numero_billet: numeroBillet,
+          reservation_id: reservationId,
+          statut: "valide"
+        })
+        .select()
+        .single();
+
+    if (erreurCreation) {
+      if (erreurCreation.code === "23505") {
+        return res.status(409).json({
+          message: "Un billet existe déjà pour cette réservation"
+        });
+      }
+      throw erreurCreation;
+    }
+
+    const billet = {
+      id: nouveauBillet.id,
+      numeroBillet: nouveauBillet.numero_billet,
+      reservationId: reservation.id,
+      numeroReservation: reservation.numero_reservation,
+      client: {
+        nom: reservation.nom,
+        prenom: reservation.prenom,
+        email: reservation.email,
+        telephone: reservation.telephone
+      },
+      seanceId: reservation.seance_id,
+      places,
+      dateGeneration: nouveauBillet.date_generation,
+      statut: nouveauBillet.statut
+    };
+
+    return res.status(201).json({
+      message: "Billet généré avec succès",
+      billet
+    });
+
+  } catch (error) {
+    console.error("Erreur génération billet :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la génération du billet"
     });
   }
-
-  const billetExistant = billets.find(
-    (b) => b.reservationId === reservationId
-  );
-
-  if (billetExistant) {
-    return res.status(409).json({
-      message: "Un billet existe déjà pour cette réservation",
-      billet: billetExistant
-    });
-  }
-
-  const billet = {
-    id: prochainIdBillet++,
-    numeroBillet: `BIL-${String(prochainIdBillet - 1).padStart(6, "0")}`,
-    reservationId: reservation.id,
-    numeroReservation: reservation.numeroReservation,
-    client: reservation.client,
-    seanceId: reservation.seanceId,
-    places: reservation.places,
-    dateGeneration: new Date().toISOString(),
-    statut: "valide"
-  };
-
-  billets.push(billet);
-
-  res.status(201).json({
-    message: "Billet généré avec succès",
-    billet
-  });
 });
-app.get("/billets/:numero", (req, res) => {
-  const numero = req.params.numero;
 
-  const billet = billets.find(
-    (b) => b.numeroBillet === numero
-  );
-
-  if (!billet) {
-    return res.status(404).json({
-      message: "Billet introuvable"
-    });
-  }
-
-  res.json({
-    message: "Billet trouvé",
-    billet
-  });
-});
 /**
  * @swagger
  * /billets/{numero}/qr-code:
@@ -1153,68 +1332,130 @@ app.get("/billets/:numero", (req, res) => {
  *       404:
  *         description: Billet introuvable
  */
+
 app.get("/billets/:numero/qr-code", async (req, res) => {
-   console.log("Route QR code appelée");
-  const numero = req.params.numero;
-
-  const billet = billets.find(
-    (b) => b.numeroBillet === numero
-  );
-
-  if (!billet) {
-    return res.status(404).json({
-      message: "Billet introuvable"
-    });
-  }
-
   try {
+    console.log("Route QR code appelée");
+
+    const numero = req.params.numero;
+
+    // Rechercher le billet dans Supabase
+    const { data: billet, error } = await supabase
+      .from("billets")
+      .select(`
+        id,
+        numero_billet,
+        reservation_id,
+        reservations (
+          numero_reservation
+        )
+      `)
+      .eq("numero_billet", numero)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!billet) {
+      return res.status(404).json({
+        message: "Billet introuvable"
+      });
+    }
+
+    // Préparer les informations du QR code
     const contenuQR = JSON.stringify({
-      numeroBillet: billet.numeroBillet,
-      numeroReservation: billet.numeroReservation,
-      reservationId: billet.reservationId
+      numeroBillet: billet.numero_billet,
+      numeroReservation: billet.reservations.numero_reservation,
+      reservationId: billet.reservation_id
     });
 
+    // Générer le QR code
     const qrCode = await QRCode.toDataURL(contenuQR);
 
-    res.json({
+    return res.status(200).json({
       message: "QR code généré avec succès",
-      numeroBillet: billet.numeroBillet,
+      numeroBillet: billet.numero_billet,
       qrCode
     });
 
-  } catch {
-    res.status(500).json({
+  } catch (error) {
+    console.error("Erreur génération QR code :", error);
+
+    return res.status(500).json({
       message: "Erreur lors de la génération du QR code"
     });
   }
 });
-app.post("/billets/:numero/valider", (req, res) => {
-  const numero = req.params.numero;
 
-  const billet = billets.find(
-    (b) => b.numeroBillet === numero
-  );
 
-  if (!billet) {
-    return res.status(404).json({
-      message: "Billet introuvable"
+app.post("/billets/:numero/valider", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const numero = req.params.numero;
+
+    // Rechercher le billet dans Supabase
+    const { data: billet, error: erreurRecherche } = await supabase
+      .from("billets")
+      .select("*")
+      .eq("numero_billet", numero)
+      .maybeSingle();
+
+    if (erreurRecherche) throw erreurRecherche;
+
+    if (!billet) {
+      return res.status(404).json({
+        message: "Billet introuvable"
+      });
+    }
+
+    if (billet.statut === "utilise") {
+      return res.status(400).json({
+        message: "Ce billet a déjà été utilisé"
+      });
+    }
+
+    // Mettre à jour le billet dans Supabase
+    const dateUtilisation = new Date().toISOString();
+
+    const { data: billetValide, error: erreurMiseAJour } =
+      await supabase
+        .from("billets")
+        .update({
+          statut: "utilise",
+          date_utilisation: dateUtilisation
+        })
+        .eq("id", billet.id)
+        .neq("statut", "utilise")
+        .select()
+        .maybeSingle();
+
+    if (erreurMiseAJour) throw erreurMiseAJour;
+
+    if (!billetValide) {
+      return res.status(400).json({
+        message: "Ce billet a déjà été utilisé"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Billet validé avec succès. Accès autorisé.",
+      billet: {
+        id: billetValide.id,
+        numeroBillet: billetValide.numero_billet,
+        reservationId: billetValide.reservation_id,
+        statut: billetValide.statut,
+        dateUtilisation: billetValide.date_utilisation
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur validation billet :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la validation du billet"
     });
   }
-
-  if (billet.statut === "utilise") {
-    return res.status(400).json({
-      message: "Ce billet a déjà été utilisé"
-    });
-  }
-
-  billet.statut = "utilise";
-  billet.dateUtilisation = new Date().toISOString();
-
-  res.json({
-    message: "Billet validé avec succès. Accès autorisé.",
-    billet
-  });
 });
+
+
 app.post("/utilisateurs/inscription", async (req, res) => {
   const { nom, prenom, email, motDePasse } = req.body;
 
@@ -1247,33 +1488,51 @@ app.post("/utilisateurs/inscription", async (req, res) => {
     });
   }
 
-  const emailNormalise = email.trim().toLowerCase();
-
-  const utilisateurExistant = utilisateurs.find(
-    (u) => u.email === emailNormalise
-  );
-
-  if (utilisateurExistant) {
-    return res.status(409).json({
-      message: "Cette adresse email est déjà utilisée"
-    });
-  }
-
   try {
+    const emailNormalise = email.trim().toLowerCase();
+
+    // Vérifier si l'utilisateur existe déjà dans Supabase
+    const { data: utilisateurExistant, error: erreurRecherche } =
+      await supabase
+        .from("utilisateurs")
+        .select("id")
+        .eq("email", emailNormalise)
+        .maybeSingle();
+
+    if (erreurRecherche) throw erreurRecherche;
+
+    if (utilisateurExistant) {
+      return res.status(409).json({
+        message: "Cette adresse email est déjà utilisée"
+      });
+    }
+
+    // Hacher le mot de passe
     const motDePasseHache = await bcrypt.hash(motDePasse, 10);
 
-    const utilisateur = {
-      id: prochainIdUtilisateur++,
-      nom: nom.trim(),
-      prenom: prenom.trim(),
-      email: emailNormalise,
-      motDePasse: motDePasseHache,
-      role: "utilisateur",
-      dateCreation: new Date().toISOString()
-    };
-    
+    // Enregistrer l'utilisateur dans Supabase
+    const { data: utilisateur, error: erreurInsertion } =
+      await supabase
+        .from("utilisateurs")
+        .insert({
+          nom: nom.trim(),
+          prenom: prenom.trim(),
+          email: emailNormalise,
+          mot_de_passe: motDePasseHache,
+          role: "utilisateur"
+        })
+        .select("id, nom, prenom, email, role, date_creation")
+        .single();
 
-    utilisateurs.push(utilisateur);
+    if (erreurInsertion) {
+      if (erreurInsertion.code === "23505") {
+        return res.status(409).json({
+          message: "Cette adresse email est déjà utilisée"
+        });
+      }
+
+      throw erreurInsertion;
+    }
 
     return res.status(201).json({
       message: "Compte utilisateur créé avec succès",
@@ -1283,91 +1542,124 @@ app.post("/utilisateurs/inscription", async (req, res) => {
         prenom: utilisateur.prenom,
         email: utilisateur.email,
         role: utilisateur.role,
-        dateCreation: utilisateur.dateCreation
+        dateCreation: utilisateur.date_creation
       }
     });
-  } catch {
+
+  } catch (error) {
+    console.error("Erreur inscription :", error);
+
     return res.status(500).json({
       message: "Erreur lors de la création du compte"
     });
   }
 });
+
+
 app.post("/utilisateurs/connexion", async (req, res) => {
-  const { email, motDePasse } = req.body;
+  try {
+    const { email, motDePasse } = req.body;
 
-  // Vérifier les champs obligatoires
-  if (
-    typeof email !== "string" ||
-    typeof motDePasse !== "string" ||
-    !email.trim() ||
-    !motDePasse
-  ) {
-    return res.status(400).json({
-      message: "L'email et le mot de passe sont obligatoires"
-    });
-  }
-
-  // Rechercher l'utilisateur
-  const emailNormalise = email.trim().toLowerCase();
-
-  const utilisateur = utilisateurs.find(
-    (u) => u.email === emailNormalise
-  );
-
-  if (!utilisateur) {
-    return res.status(401).json({
-      message: "Email ou mot de passe incorrect"
-    });
-  }
-
-  // Vérifier le mot de passe
-  const motDePasseCorrect = await bcrypt.compare(
-    motDePasse,
-    utilisateur.motDePasse
-  );
-
-  if (!motDePasseCorrect) {
-    return res.status(401).json({
-      message: "Email ou mot de passe incorrect"
-    });
-  }
-
-  // Générer le token JWT
-  const token = jwt.sign(
-    {
-      id: utilisateur.id,
-      email: utilisateur.email,
-      role: utilisateur.role
-    },
-    JWT_SECRET,
-    { expiresIn: "2h" }
-  );
-
-  return res.status(200).json({
-    message: "Connexion réussie",
-    token,
-    utilisateur: {
-      id: utilisateur.id,
-      nom: utilisateur.nom,
-      prenom: utilisateur.prenom,
-      email: utilisateur.email,
-      role: utilisateur.role
+    // Vérifier les champs obligatoires
+    if (
+      typeof email !== "string" ||
+      typeof motDePasse !== "string" ||
+      !email.trim() ||
+      !motDePasse
+    ) {
+      return res.status(400).json({
+        message: "L'email et le mot de passe sont obligatoires"
+      });
     }
-  });
-});
-app.get("/reservations", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
+
+    // Normaliser l'adresse email
+    const emailNormalise = email.trim().toLowerCase();
+
+    // Rechercher l'utilisateur dans Supabase
+    const { data: utilisateur, error } = await supabase
+      .from("utilisateurs")
+      .select("*")
+      .eq("email", emailNormalise)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!utilisateur) {
+      return res.status(401).json({
+        message: "Email ou mot de passe incorrect"
+      });
+    }
+
+    // Vérifier le mot de passe haché
+    const motDePasseCorrect = await bcrypt.compare(
+      motDePasse,
+      utilisateur.mot_de_passe
+    );
+
+    if (!motDePasseCorrect) {
+      return res.status(401).json({
+        message: "Email ou mot de passe incorrect"
+      });
+    }
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      {
+        id: utilisateur.id,
+        email: utilisateur.email,
+        role: utilisateur.role
+      },
+      JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    return res.status(200).json({
+      message: "Connexion réussie",
+      token,
+      utilisateur: {
+        id: utilisateur.id,
+        nom: utilisateur.nom,
+        prenom: utilisateur.prenom,
+        email: utilisateur.email,
+        role: utilisateur.role
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur connexion :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la connexion"
     });
   }
-
-  return res.status(200).json({
-    message: "Liste des réservations récupérée avec succès",
-    reservations
-  });
 });
-app.get("/reservations/recherche/:numero", verifierToken, (req, res) => {
+
+app.get("/reservations", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const { data: reservations, error } = await supabase
+      .from("reservations")
+      .select("*");
+
+    if (error) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des réservations",
+        error: error.message
+      });
+    }
+
+    return res.status(200).json({
+      message: "Liste des réservations récupérée avec succès",
+      reservations
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
+    });
+  }
+});
+app.get("/reservations/recherche/:numero", verifierToken, async(req, res) => {
   if (req.utilisateur.role !== "admin") {
     return res.status(403).json({
       message: "Accès réservé aux administrateurs"
@@ -1376,9 +1668,37 @@ app.get("/reservations/recherche/:numero", verifierToken, (req, res) => {
 
   const numero = req.params.numero.toUpperCase();
 
-  const reservation = reservations.find(
-    (r) => r.numeroReservation === numero
-  );
+ const { data: reservation, error } = await supabase
+  .from("reservations")
+  .select(`
+    *,
+    reservation_places (
+      places (
+        id,
+        seance_id,
+        rangee,
+        numero,
+        statut
+      )
+    )
+  `)
+  .eq("numero_reservation", numero)
+  .maybeSingle();
+
+if (error) {
+  throw error;
+}
+
+if (!reservation) {
+  return res.status(404).json({
+    message: "Réservation introuvable"
+  });
+}
+
+return res.status(200).json({
+  message: "Réservation trouvée avec succès",
+  reservation
+});
 
   if (!reservation) {
     return res.status(404).json({
@@ -1391,225 +1711,538 @@ app.get("/reservations/recherche/:numero", verifierToken, (req, res) => {
     reservation
   });
 });
-app.get("/reservations/seance/:seanceId", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
-    });
-  }
 
-  const seanceId = parseInt(req.params.seanceId);
-
-  const reservationsSeance = reservations.filter(
-    (reservation) => reservation.seanceId === seanceId
-  );
-
-  return res.status(200).json({
-    message: "Réservations de la séance récupérées avec succès",
-    seanceId,
-    nombreReservations: reservationsSeance.length,
-    reservations: reservationsSeance
-  });
-});
-app.get("/utilisateurs/mes-reservations", verifierToken, (req, res) => {
-  const mesReservations = reservations.filter(
-    (reservation) =>
-      reservation.client.email.toLowerCase() ===
-      req.utilisateur.email.toLowerCase()
-  );
-
-  return res.status(200).json({
-    message: "Liste de vos réservations",
-    reservations: mesReservations
-  });
-});
-app.get("/utilisateurs/mes-billets", verifierToken, (req, res) => {
-  const mesReservations = reservations.filter(
-    (reservation) =>
-      reservation.client.email.toLowerCase() ===
-      req.utilisateur.email.toLowerCase()
-  );
-
-  const mesBillets = billets.filter((billet) =>
-    mesReservations.some(
-      (reservation) => reservation.id === billet.reservationId
-    )
-  );
-
-  return res.status(200).json({
-    message: "Liste de vos billets",
-    billets: mesBillets
-  });
-});
-app.put("/utilisateurs/mes-informations", verifierToken, (req, res) => {
-  const { nom, prenom, email } = req.body;
-
-  if (
-    typeof nom !== "string" ||
-    typeof prenom !== "string" ||
-    typeof email !== "string" ||
-    !nom.trim() ||
-    !prenom.trim() ||
-    !email.trim()
-  ) {
-    return res.status(400).json({
-      message: "Tous les champs sont obligatoires"
-    });
-  }
-
-  const emailNormalise = email.trim().toLowerCase();
-  const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailValide.test(emailNormalise)) {
-    return res.status(400).json({
-      message: "Adresse email invalide"
-    });
-  }
-
-  const utilisateur = utilisateurs.find(
-    (u) => u.id === req.utilisateur.id
-  );
-
-  if (!utilisateur) {
-    return res.status(404).json({
-      message: "Utilisateur introuvable"
-    });
-  }
-
-  const emailDejaUtilise = utilisateurs.find(
-    (u) => u.email === emailNormalise && u.id !== utilisateur.id
-  );
-
-  if (emailDejaUtilise) {
-    return res.status(409).json({
-      message: "Cette adresse email est déjà utilisée"
-    });
-  }
-
-  utilisateur.nom = nom.trim();
-  utilisateur.prenom = prenom.trim();
-  utilisateur.email = emailNormalise;
-
-  return res.status(200).json({
-    message: "Informations personnelles modifiées avec succès",
-    utilisateur: {
-      id: utilisateur.id,
-      nom: utilisateur.nom,
-      prenom: utilisateur.prenom,
-      email: utilisateur.email,
-      role: utilisateur.role
+app.get("/reservations/seance/:seanceId", verifierToken, async (req, res) => {
+  try {
+    if (req.utilisateur.role !== "admin") {
+      return res.status(403).json({
+        message: "Accès réservé aux administrateurs"
+      });
     }
-  });
-});
-app.put("/reservations/:id/annuler", verifierToken, (req, res) => {
-  const idReservation = parseInt(req.params.id);
 
-  const reservation = reservations.find(
-    (r) => r.id === idReservation
-  );
+    const seanceId = parseInt(req.params.seanceId, 10);
 
-  if (!reservation) {
-    return res.status(404).json({
-      message: "Réservation introuvable"
-    });
-  }
-
-if (
-  req.utilisateur.role !== "admin" &&
-  reservation.client.email.toLowerCase() !==
-    req.utilisateur.email.toLowerCase()
-) {
-  return res.status(403).json({
-    message: "Vous ne pouvez pas annuler cette réservation"
-  });
-}
-
-  if (reservation.statut === "annulee") {
-    return res.status(400).json({
-      message: "Cette réservation est déjà annulée"
-    });
-  }
-
-  // Retrouver la séance concernée
-  const seance = films
-    .flatMap((film) => film.seances)
-    .find((s) => s.id === reservation.seanceId);
-
-  if (!seance) {
-    return res.status(404).json({
-      message: "Séance introuvable"
-    });
-  }
-
-  // Libérer les places réservées
-  reservation.places.forEach((placeReservation) => {
-    const place = seance.places.find(
-      (p) => p.id === placeReservation.id
-    );
-
-    if (place) {
-      place.statut = "disponible";
+    if (!Number.isInteger(seanceId) || seanceId <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de séance invalide"
+      });
     }
-  });
 
-  reservation.statut = "annulee";
-  notifications.push({
-  id: prochainIdNotification++,
-  utilisateurId: req.utilisateur.id,
-  message: `Votre réservation ${reservation.numeroReservation} a été annulée.`,
-  date: new Date().toISOString(),
-  lu: false
-});
-  reservation.dateAnnulation = new Date().toISOString();
+    const { data: reservationsSeance, error } = await supabase
+      .from("reservations")
+      .select(`
+        *,
+        reservation_places (
+          places (
+            id,
+            rangee,
+            numero,
+            statut
+          )
+        )
+      `)
+      .eq("seance_id", seanceId)
+      .order("date_reservation", { ascending: false });
 
-  return res.status(200).json({
-    message: "Réservation annulée avec succès",
-    reservation
-  });
-});
-app.get("/utilisateurs/mes-notifications", verifierToken, (req, res) => {
-  const mesNotifications = notifications.filter(
-    (notification) =>
-      notification.utilisateurId === req.utilisateur.id
-  );
+        console.log("Séance recherchée :", seanceId);
+    console.log("Réservations récupérées :", reservationsSeance);
+    console.log("Erreur Supabase :", error);
 
-  return res.status(200).json({
-    message: "Liste de vos notifications",
-    notifications: mesNotifications
-  });
-});
-app.get("/statistiques/seances-proches-saturation", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
+    if (error) {
+      throw error;
+    }
+
+    return res.status(200).json({
+      message: "Réservations de la séance récupérées avec succès",
+      seanceId,
+      nombreReservations: reservationsSeance.length,
+      reservations: reservationsSeance
+    });
+  } catch (error) {
+    console.error("Erreur récupération réservations séance :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des réservations"
     });
   }
+});
 
-  const seances = films.flatMap((film) =>
-    film.seances.map((seance) => {
-      const capacite = seance.places.length;
-      const placesReservees = seance.places.filter(
-        (place) => place.statut === "reservee"
-      ).length;
 
-      const tauxRemplissage = capacite > 0
-        ? (placesReservees / capacite) * 100
-        : 0;
+app.get("/utilisateurs/mes-reservations", verifierToken, async (req, res) => {
+  try {
+    const email = req.utilisateur.email.toLowerCase();
+
+    // Rechercher les réservations de l'utilisateur dans Supabase
+    const { data: reservations, error } = await supabase
+      .from("reservations")
+      .select(`
+        id,
+        numero_reservation,
+        seance_id,
+        nom,
+        prenom,
+        email,
+        telephone,
+        date_reservation,
+        statut,
+        reservation_places (
+          places (
+            id,
+            rangee,
+            numero
+          )
+        )
+      `)
+      .eq("email", email)
+      .order("date_reservation", { ascending: false });
+
+    if (error) throw error;
+
+    // Adapter les données au format de réponse de l'API
+    const mesReservations = reservations.map((reservation) => ({
+      id: reservation.id,
+      numeroReservation: reservation.numero_reservation,
+      seanceId: reservation.seance_id,
+      client: {
+        nom: reservation.nom,
+        prenom: reservation.prenom,
+        email: reservation.email,
+        telephone: reservation.telephone
+      },
+      places: reservation.reservation_places.map(
+        (association) => association.places
+      ),
+      dateReservation: reservation.date_reservation,
+      statut: reservation.statut
+    }));
+
+    return res.status(200).json({
+      message: "Liste de vos réservations",
+      reservations: mesReservations
+    });
+
+  } catch (error) {
+    console.error("Erreur récupération réservations :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la récupération de vos réservations"
+    });
+  }
+});
+
+
+app.get("/utilisateurs/mes-billets", verifierToken, async (req, res) => {
+  try {
+    const email = req.utilisateur.email.toLowerCase();
+
+    // Récupérer les billets liés aux réservations de l'utilisateur
+    const { data: billets, error } = await supabase
+      .from("billets")
+      .select(`
+        id,
+        numero_billet,
+        reservation_id,
+        date_generation,
+        statut,
+        date_utilisation,
+        reservations!inner (
+          id,
+          numero_reservation,
+          seance_id,
+          nom,
+          prenom,
+          email,
+          telephone,
+          reservation_places (
+            places (
+              id,
+              rangee,
+              numero
+            )
+          )
+        )
+      `)
+      .eq("reservations.email", email)
+      .order("date_generation", { ascending: false });
+
+    if (error) throw error;
+
+    // Formater les billets
+    const mesBillets = billets.map((billet) => {
+      const reservation = billet.reservations;
 
       return {
-        film: film.titre,
-        seanceId: seance.id,
-        salle: seance.salle,
-        capacite,
-        placesReservees,
-        tauxRemplissage: Number(tauxRemplissage.toFixed(2))
+        id: billet.id,
+        numeroBillet: billet.numero_billet,
+        reservationId: reservation.id,
+        numeroReservation: reservation.numero_reservation,
+        client: {
+          nom: reservation.nom,
+          prenom: reservation.prenom,
+          email: reservation.email,
+          telephone: reservation.telephone
+        },
+        seanceId: reservation.seance_id,
+        places: reservation.reservation_places.map(
+          (association) => association.places
+        ),
+        dateGeneration: billet.date_generation,
+        statut: billet.statut,
+        dateUtilisation: billet.date_utilisation
       };
-    })
-  );
+    });
 
-  const seancesProchesSaturation = seances.filter(
-    (seance) => seance.tauxRemplissage >= 80
-  );
+    return res.status(200).json({
+      message: "Liste de vos billets",
+      billets: mesBillets
+    });
+
+  } catch (error) {
+    console.error("Erreur récupération billets :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la récupération de vos billets"
+    });
+  }
+});
+
+
+app.put("/utilisateurs/mes-informations", verifierToken, async (req, res) => {
+  try {
+    const { nom, prenom, email } = req.body;
+
+    if (
+      typeof nom !== "string" ||
+      typeof prenom !== "string" ||
+      typeof email !== "string" ||
+      !nom.trim() ||
+      !prenom.trim() ||
+      !email.trim()
+    ) {
+      return res.status(400).json({
+        message: "Tous les champs sont obligatoires"
+      });
+    }
+
+    const emailNormalise = email.trim().toLowerCase();
+    const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailValide.test(emailNormalise)) {
+      return res.status(400).json({
+        message: "Adresse email invalide"
+      });
+    }
+
+    // Vérifier si l'adresse email est déjà utilisée par un autre compte
+    const { data: emailExistant, error: erreurRecherche } =
+      await supabase
+        .from("utilisateurs")
+        .select("id")
+        .eq("email", emailNormalise)
+        .neq("id", req.utilisateur.id)
+        .maybeSingle();
+
+    if (erreurRecherche) throw erreurRecherche;
+
+    if (emailExistant) {
+      return res.status(409).json({
+        message: "Cette adresse email est déjà utilisée"
+      });
+    }
+
+    // Modifier les informations dans Supabase
+    const { data: utilisateur, error } = await supabase
+      .from("utilisateurs")
+      .update({
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        email: emailNormalise
+      })
+      .eq("id", req.utilisateur.id)
+      .select("id, nom, prenom, email, role")
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!utilisateur) {
+      return res.status(404).json({
+        message: "Utilisateur introuvable"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Informations personnelles modifiées avec succès",
+      utilisateur
+    });
+
+  } catch (error) {
+    console.error("Erreur modification profil :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la modification des informations personnelles"
+    });
+  }
+});
+
+app.put("/utilisateurs/changer-mot-de-passe", verifierToken, async (req, res) => {
+  try {
+    const { ancienMotDePasse, nouveauMotDePasse } = req.body;
+
+    if (!ancienMotDePasse || !nouveauMotDePasse) {
+      return res.status(400).json({
+        message: "Les deux mots de passe sont obligatoires"
+      });
+    }
+
+    if (nouveauMotDePasse.length < 8) {
+      return res.status(400).json({
+        message: "Le nouveau mot de passe doit contenir au moins 8 caractères"
+      });
+    }
+
+    const { data: utilisateur, error } = await supabase
+      .from("utilisateurs")
+      .select("id, mot_de_passe")
+      .eq("id", req.utilisateur.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!utilisateur) {
+      return res.status(404).json({
+        message: "Utilisateur introuvable"
+      });
+    }
+
+    const motDePasseCorrect = await bcrypt.compare(
+      ancienMotDePasse,
+      utilisateur.mot_de_passe
+    );
+
+    if (!motDePasseCorrect) {
+      return res.status(401).json({
+        message: "Ancien mot de passe incorrect"
+      });
+    }
+
+    const nouveauMotDePasseHache = await bcrypt.hash(nouveauMotDePasse, 10);
+
+    const { error: erreurMaj } = await supabase
+      .from("utilisateurs")
+      .update({ mot_de_passe: nouveauMotDePasseHache })
+      .eq("id", req.utilisateur.id);
+
+    if (erreurMaj) throw erreurMaj;
+
+    return res.status(200).json({
+      message: "Mot de passe modifié avec succès"
+    });
+
+  } catch (error) {
+    console.error("Erreur changement mot de passe :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors du changement de mot de passe"
+    });
+  }
+});
+
+app.get("/utilisateurs/mes-informations", verifierToken, async (req, res) => {
+  try {
+    const { data: utilisateur, error } = await supabase
+      .from("utilisateurs")
+      .select("id, nom, prenom, email, role")
+      .eq("id", req.utilisateur.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!utilisateur) {
+      return res.status(404).json({
+        message: "Utilisateur introuvable"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Informations personnelles récupérées avec succès",
+      utilisateur
+    });
+  } catch (error) {
+    console.error("Erreur récupération profil :", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des informations personnelles"
+    });
+  }
+});
+
+app.put("/reservations/:id/annuler", verifierToken, async (req, res) => {
+  try {
+    const idReservation = parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(idReservation) || idReservation <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de réservation invalide"
+      });
+    }
+
+    const { data, error } = await supabase.rpc(
+      "annuler_reservation",
+      {
+        p_reservation_id: idReservation,
+        p_utilisateur_id: req.utilisateur.id,
+        p_est_admin: req.utilisateur.role === "admin"
+      }
+    );
+
+    if (error) {
+      if (error.message.includes("introuvable")) {
+        return res.status(404).json({ message: error.message });
+      }
+
+      if (
+        error.message.includes("ne pouvez pas") ||
+        error.message.includes("propriétaire")
+      ) {
+        return res.status(403).json({ message: error.message });
+      }
+
+      if (error.message.includes("déjà annulée")) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      throw error;
+    }
+
+    return res.status(200).json(data);
+
+  } catch (error) {
+    console.error("Erreur annulation réservation :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de l'annulation de la réservation"
+    });
+  }
+});
+
+app.get("/utilisateurs/mes-notifications", verifierToken, async (req, res) => {
+  try {
+    const { data: notifications, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("utilisateur_id", req.utilisateur.id)
+      .order("date", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const mesNotifications = notifications.map((notification) => ({
+      id: notification.id,
+      utilisateurId: notification.utilisateur_id,
+      message: notification.message,
+      date: notification.date,
+      lu: notification.lu
+    }));
+
+    return res.status(200).json({
+      message: "Liste de vos notifications",
+      notifications: mesNotifications
+    });
+
+  } catch (error) {
+    console.error("Erreur récupération notifications :", error);
+
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des notifications"
+    });
+  }
+});
+
+app.put("/utilisateurs/notifications/:id/lue", verifierToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Identifiant de notification invalide"
+      });
+    }
+
+    const { data: notification, error } = await supabase
+      .from("notifications")
+      .update({ lu: true })
+      .eq("id", id)
+      .eq("utilisateur_id", req.utilisateur.id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!notification) {
+      return res.status(404).json({
+        message: "Notification introuvable"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Notification marquée comme lue",
+      notification
+    });
+
+  } catch (error) {
+    console.error("Erreur notification :", error);
+    return res.status(500).json({
+      message: "Erreur lors de la mise à jour de la notification"
+    });
+  }
+});
+
+
+app.get("/statistiques/seances-proches-saturation", verifierToken, async (req, res) => {
+  if (req.utilisateur.role !== "admin") {
+    return res.status(403).json({
+      message: "Accès réservé aux administrateurs"
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("seances")
+    .select(`
+      id,
+      capacite,
+      date_seance,
+      heure,
+      films (titre),
+      salles (nom),
+      places (statut)
+    `);
+
+  if (error) {
+    console.error("Erreur Supabase :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors du calcul des statistiques"
+    });
+  }
+
+  const seancesProchesSaturation = data.map((seance) => {
+    const capacite = seance.places.length;
+    const placesReservees = seance.places.filter(
+      (place) => place.statut === "reservee"
+    ).length;
+
+    const tauxRemplissage = capacite > 0
+      ? (placesReservees / capacite) * 100
+      : 0;
+
+    return {
+      film: seance.films?.titre,
+      seanceId: seance.id,
+      salle: seance.salles?.nom,
+      capacite,
+      placesReservees,
+      tauxRemplissage: Number(tauxRemplissage.toFixed(2))
+    };
+  }).filter((seance) => seance.tauxRemplissage >= 80);
 
   return res.status(200).json({
     message: "Séances proches de la saturation récupérées avec succès",
@@ -1617,113 +2250,221 @@ app.get("/statistiques/seances-proches-saturation", verifierToken, (req, res) =>
     seances: seancesProchesSaturation
   });
 });
-app.get("/statistiques/horaires-plus-demandes", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
+app.get("/statistiques/horaires-plus-demandes", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    const { data: reservations, error: erreurReservations } = await supabase
+      .from("reservations")
+      .select("seance_id, statut");
+
+    if (erreurReservations) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des réservations",
+        error: erreurReservations.message
+      });
+    }
+
+    const { data: seances, error: erreurSeances } = await supabase
+      .from("seances")
+      .select("id, heure");
+
+    if (erreurSeances) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des séances",
+        error: erreurSeances.message
+      });
+    }
+
+    const statistiques = {};
+
+    reservations
+      .filter(reservation => reservation.statut !== "annulee")
+      .forEach(reservation => {
+        const seance = seances.find(
+          s => s.id === reservation.seance_id
+        );
+
+        if (seance) {
+          const horaire = seance.heure;
+          statistiques[horaire] = (statistiques[horaire] || 0) + 1;
+        }
+      });
+
+    const horairesDemandes = Object.entries(statistiques)
+      .map(([horaire, nombreReservations]) => ({
+        horaire,
+        nombreReservations
+      }))
+      .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+    return res.status(200).json({
+      message: "Horaires les plus demandés récupérés avec succès",
+      horaires: horairesDemandes
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
     });
   }
+});app.get("/statistiques/journees-plus-frequentees", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    // Récupérer les réservations depuis Supabase
+    const { data: reservations, error: erreurReservations } = await supabase
+      .from("reservations")
+      .select("seance_id, statut");
 
-  const statistiques = {};
+    if (erreurReservations) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des réservations",
+        error: erreurReservations.message
+      });
+    }
 
-  reservations
-    .filter((reservation) => reservation.statut !== "annulee")
-    .forEach((reservation) => {
-      const seance = films
-        .flatMap((film) => film.seances)
-        .find((s) => s.id === reservation.seanceId);
+    // Récupérer les séances depuis Supabase
+    const { data: seances, error: erreurSeances } = await supabase
+      .from("seances")
+      .select("id, date_seance");
 
-      if (seance) {
-        const horaire = seance.heure;
+    if (erreurSeances) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des séances",
+        error: erreurSeances.message
+      });
+    }
 
-        statistiques[horaire] = (statistiques[horaire] || 0) + 1;
-      }
+    // Calculer les statistiques par journée
+    const statistiques = {};
+
+    reservations
+      .filter(reservation => reservation.statut !== "annulee")
+      .forEach(reservation => {
+        const seance = seances.find(
+          s => s.id === reservation.seance_id
+        );
+
+        if (seance) {
+          const date = seance.date_seance;
+
+          statistiques[date] = (statistiques[date] || 0) + 1;
+        }
+      });
+
+    // Trier les journées par nombre de réservations
+    const journeesFrequentees = Object.entries(statistiques)
+      .map(([date, nombreReservations]) => ({
+        date,
+        nombreReservations
+      }))
+      .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+    return res.status(200).json({
+      message: "Journées les plus fréquentées récupérées avec succès",
+      journees: journeesFrequentees
     });
 
-  const horairesDemandes = Object.entries(statistiques)
-    .map(([horaire, nombreReservations]) => ({
-      horaire,
-      nombreReservations
-    }))
-    .sort((a, b) => b.nombreReservations - a.nombreReservations);
-
-  return res.status(200).json({
-    message: "Horaires les plus demandés récupérés avec succès",
-    horaires: horairesDemandes
-  });
-});
-app.get("/statistiques/journees-plus-frequentees", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
-    });
-  }
-
-  const statistiques = {};
-
-  reservations
-    .filter((reservation) => reservation.statut !== "annulee")
-    .forEach((reservation) => {
-      const seance = films
-        .flatMap((film) => film.seances)
-        .find((s) => s.id === reservation.seanceId);
-
-      if (seance) {
-        const date = seance.date;
-
-        statistiques[date] = (statistiques[date] || 0) + 1;
-      }
-    });
-
-  const journeesFrequentees = Object.entries(statistiques)
-    .map(([date, nombreReservations]) => ({
-      date,
-      nombreReservations
-    }))
-    .sort((a, b) => b.nombreReservations - a.nombreReservations);
-
-  return res.status(200).json({
-    message: "Journées les plus fréquentées récupérées avec succès",
-    journees: journeesFrequentees
-  });
-});
-app.get("/statistiques/periodes-forte-affluence", verifierToken, (req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
     });
   }
+});
 
-  const statistiques = {};
+app.get("/statistiques/periodes-forte-affluence", verifierToken, verifierAdmin, async (req, res) => {
+  try {
+    // Récupérer les réservations
+    const { data: reservations, error: erreurReservations } = await supabase
+      .from("reservations")
+      .select("seance_id, statut");
 
-  reservations
-    .filter((reservation) => reservation.statut !== "annulee")
-    .forEach((reservation) => {
-      const seance = films
-        .flatMap((film) => film.seances)
-        .find((s) => s.id === reservation.seanceId);
+    if (erreurReservations) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des réservations",
+        error: erreurReservations.message
+      });
+    }
 
-      if (seance) {
-        const date = new Date(seance.date);
-        const mois = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    // Récupérer les séances
+    const { data: seances, error: erreurSeances } = await supabase
+      .from("seances")
+      .select("id, date_seance");
 
-        statistiques[mois] = (statistiques[mois] || 0) + 1;
-      }
+    if (erreurSeances) {
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des séances",
+        error: erreurSeances.message
+      });
+    }
+
+    // Calculer les statistiques par mois
+    const statistiques = {};
+
+    reservations
+      .filter(reservation => reservation.statut !== "annulee")
+      .forEach(reservation => {
+        const seance = seances.find(
+          s => s.id === reservation.seance_id
+        );
+
+        if (seance) {
+          const mois = seance.date_seance.substring(0, 7);
+
+          statistiques[mois] = (statistiques[mois] || 0) + 1;
+        }
+      });
+
+    // Trier les périodes par nombre de réservations
+    const periodesForteAffluence = Object.entries(statistiques)
+      .map(([periode, nombreReservations]) => ({
+        periode,
+        nombreReservations
+      }))
+      .sort((a, b) => b.nombreReservations - a.nombreReservations);
+
+    return res.status(200).json({
+      message: "Périodes de forte affluence récupérées avec succès",
+      periodes: periodesForteAffluence
     });
 
-  const periodesForteAffluence = Object.entries(statistiques)
-    .map(([periode, nombreReservations]) => ({
-      periode,
-      nombreReservations
-    }))
-    .sort((a, b) => b.nombreReservations - a.nombreReservations);
-
-  return res.status(200).json({
-    message: "Périodes de forte affluence récupérées avec succès",
-    periodes: periodesForteAffluence
-  });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
+    });
+  }
 });
- console.log("Route QR code chargée");
+
+
+
+console.log("Route QR code chargée");
+
+// Route pour récupérer tous les films
+app.get("/films", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("films")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("Erreur Supabase :", error.message);
+      return res.status(500).json({
+        message: "Erreur lors de la récupération des films"
+      });
+    }
+
+    return res.status(200).json(data);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
+    });
+  }
+});
+
+// Démarrage du serveur
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Serveur lancé sur le port ${PORT}`);
