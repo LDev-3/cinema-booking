@@ -7,6 +7,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const supabase = require("./supabase");
 const filmsRoutes = require("./routes/films.routes");
+const utilisateursRoutes = require("./routes/utilisateurs.routes");
 const { verifierToken, verifierAdmin } = require("./middlewares/auth");
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -46,6 +47,7 @@ app.use(
   })
 );
 app.use("/films", filmsRoutes);
+app.use("/utilisateurs", utilisateursRoutes);
 const PORT = process.env.PORT || 3000;
 
 app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) => {
