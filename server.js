@@ -37,7 +37,13 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    persistAuthorization: true
+  })
+);
 const PORT = process.env.PORT || 3000;
 function verifierToken(req, res, next) {
   const authorization = req.headers.authorization;
@@ -1706,7 +1712,8 @@ app.get("/reservations", verifierToken, verifierAdmin, async (req, res) => {
       error: error.message
     });
   }
-});/**
+});
+/**
  * @swagger
  * /reservations:
  *   get:
