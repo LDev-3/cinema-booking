@@ -6,7 +6,7 @@ const app = express();
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const supabase = require("./supabase");
-
+const filmsRoutes = require("./routes/films.routes");
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -44,6 +44,7 @@ app.use(
     persistAuthorization: true
   })
 );
+app.use("/films", filmsRoutes);
 const PORT = process.env.PORT || 3000;
 function verifierToken(req, res, next) {
   const authorization = req.headers.authorization;
