@@ -21,7 +21,16 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "Documentation de l'API de réservation de cinéma"
     },
-    servers: [{ url: "/" }]
+       servers: [{ url: "/" }],
+       components: {
+        securitySchemes: {
+         bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT"
+        }
+      }
+    }
   },
   apis: ["./server.js"]
 };
@@ -1645,6 +1654,33 @@ app.post("/utilisateurs/connexion", async (req, res) => {
     });
   }
 });
+/**
+ * @swagger
+ * /utilisateurs/connexion:
+ *   post:
+ *     summary: Se connecter et obtenir un token JWT
+ *     tags: [Utilisateurs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - motDePasse
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: email@exemple.com
+ *               motDePasse:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Connexion réussie, le token JWT est retourné
+ *       401:
+ *         description: Email ou mot de passe incorrect
+ */
 
 app.get("/reservations", verifierToken, verifierAdmin, async (req, res) => {
   try {
@@ -1670,8 +1706,22 @@ app.get("/reservations", verifierToken, verifierAdmin, async (req, res) => {
       error: error.message
     });
   }
-});
-
+});/**
+ * @swagger
+ * /reservations:
+ *   get:
+ *     summary: Lister toutes les réservations (administrateur)
+ *     tags: [Réservations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des réservations
+ *       401:
+ *         description: Token absent ou invalide
+ *       403:
+ *         description: Accès réservé aux administrateurs
+ */
 app.get("/reservations/recherche/:numero", verifierToken, async (req, res) => {
   try {
     if (req.utilisateur.role !== "admin") {
@@ -2474,7 +2524,16 @@ app.get("/films", async (req, res) => {
     });
   }
 });
-
+/**
+ * @swagger
+ * /films:
+ *   get:
+ *     summary: Lister les films
+ *     tags: [Films]
+ *     responses:
+ *       200:
+ *         description: Liste des films
+ */
 // Démarrage du serveur
 if (require.main === module) {
   app.listen(PORT, () => {
