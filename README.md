@@ -6,6 +6,7 @@ API de réservation de cinéma : films, séances, salles, places, réservations,
 
 - Application : https://cinema-booking-58636.containers.snapdeploy.app
 - Documentation Swagger : https://cinema-booking-58636.containers.snapdeploy.app/api-docs
+
 ## Comptes de test
 
 Les identifiants du compte administrateur et du compte utilisateur sont fournis dans le dossier rendu (PDF).
@@ -50,15 +51,25 @@ Le backend est organisé en couches, chacune avec une seule responsabilité :
 | Repositories | `repositories/` | accès à Supabase uniquement |
 | Middlewares | `middlewares/` | vérification du token JWT et du rôle administrateur |
 
-État d'avancement :
+Tous les domaines sont découpés en couches :
 
-- Domaine **films** : découpé en `FilmRepository`, `FilmService`, `FilmController` et `routes/films.routes.js`.
-- Middlewares `verifierToken` et `verifierAdmin` : extraits dans `middlewares/auth.js`.
-- Domaines restants (séances et salles, réservations, billets, utilisateurs, statistiques) : encore dans `server.js`. Ils suivront le même modèle, avec les tests pour détecter toute régression.
+| Domaine | Fichiers |
+|---|---|
+| Films | `FilmRepository`, `FilmService`, `FilmController`, `films.routes.js` |
+| Utilisateurs | `UtilisateurRepository`, `UtilisateurService`, `UtilisateurController`, `utilisateurs.routes.js` |
+| Séances | `SeanceRepository`, `SeanceService`, `SeanceController`, `seances.routes.js` |
+| Salles | `SalleRepository`, `SalleService`, `SalleController`, `salles.routes.js` |
+| Réservations | `ReservationRepository`, `ReservationService`, `ReservationController`, `reservations.routes.js` |
+| Billets | `BilletRepository`, `BilletService`, `BilletController`, `billets.routes.js` |
+| Statistiques | `StatistiqueRepository`, `StatistiqueService`, `StatistiqueController`, `statistiques.routes.js` |
+
+Le fichier `server.js` ne contient plus que la configuration, la documentation Swagger, le branchement des routeurs et le démarrage du serveur (environ 150 lignes, contre 2 500 avant le découpage).
+
+Les erreurs métier sont gérées par une classe `ErreurHttp` (dossier `utils/`) : un service lève l'erreur avec son code HTTP, et le contrôleur la transforme en réponse.
 
 ## Tests
 
-222 tests automatisés avec Jest et Supertest. Supabase est simulé (`tests/helpers/supabaseMock.js`) : les tests sont rapides, reproductibles et ne modifient jamais la vraie base. Couverture supérieure à 99 % sur le code applicatif.
+222 tests automatisés avec Jest et Supertest. Supabase est simulé (`tests/helpers/supabaseMock.js`) : les tests sont rapides, reproductibles et ne modifient jamais la vraie base. Couverture supérieure à 95 % sur le code applicatif.
 
 ## Remarques
 
