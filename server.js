@@ -9,6 +9,8 @@ const filmsRoutes = require("./routes/films.routes");
 const utilisateursRoutes = require("./routes/utilisateurs.routes");
 const sallesRoutes = require("./routes/salles.routes");
 const { seancesRouter, seancesParFilmRouter } = require("./routes/seances.routes");
+const reservationsRoutes = require("./routes/reservations.routes");
+const { billetsRouter, billetsParReservationRouter } = require("./routes/billets.routes");
 const { verifierToken, verifierAdmin } = require("./middlewares/auth");
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -52,6 +54,9 @@ app.use("/utilisateurs", utilisateursRoutes);
 app.use("/salles", sallesRoutes);
 app.use("/seances", seancesRouter);
 app.use("/films", seancesParFilmRouter);
+app.use("/reservations", reservationsRoutes);
+app.use("/reservations", billetsParReservationRouter);
+app.use("/billets", billetsRouter);
 const PORT = process.env.PORT || 3000;
 
 
