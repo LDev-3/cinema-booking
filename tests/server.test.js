@@ -24,7 +24,7 @@ const user = creerToken("utilisateur", 2, "paul@test.com");
 
 const envoyer = (methode, url, auth, corps) => {
   let requete = request(app)[methode](url);
-  if (auth) requete = requete.set("Authorization", auth);
+  if (auth) {requete = requete.set("Authorization", auth);}
   return corps ? requete.send(corps) : requete;
 };
 
@@ -829,59 +829,118 @@ describe("POST /reservations/confirmer", () => {
   const valide = {
     seanceId: 1,
     placesIds: [1, 2],
-    nom: "Dupont",
-    prenom: "Jean",
-    email: "Jean@Test.com",
     telephone: "0612345678"
   };
+
+  const utilisateurConnecte = ok({
+    id: 2,
+    nom: "Martin",
+    prenom: "Paul",
+    email: "paul@test.com"
+  });
+
+  test("refuse une réservation sans authentification", async () => {
+    const res = await POST("/reservations/confirmer", null, valide);
+    expect(res.status).toBe(401);
+  });
 
   test.each([
     ["sans séance", { seanceId: undefined }],
     ["sans place", { placesIds: [] }],
     ["avec des places qui ne sont pas un tableau", { placesIds: "1" }],
     ["avec des identifiants de places non numériques", { placesIds: ["a"] }],
-    ["sans nom", { nom: " " }],
-    ["avec un e-mail invalide", { email: "x" }],
     ["sans téléphone", { telephone: "" }]
   ])("refuse une réservation %s", async (_nom, modification) => {
-    const res = await POST("/reservations/confirmer", null, { ...valide, ...modification });
+    const res = await POST(
+      "/reservations/confirmer",
+      user,
+      { ...valide, ...modification }
+    );
+
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Informations de réservation invalides ou incomplètes");
+    expect(res.body.message).toBe(
+      "Informations de réservation invalides ou incomplètes"
+    );
   });
 
-  test("confirme la réservation et normalise l'e-mail", async () => {
-    db.enqueue(ok({ id: 1, numero_reservation: "RES-000001" }));
-    const res = await POST("/reservations/confirmer", null, valide);
+  test("confirme la réservation avec le compte connecté", async () => {
+    db.enqueue(
+      utilisateurConnecte,
+      ok({ id: 1, numero_reservation: "RES-000001" })
+    );
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
     expect(res.status).toBe(201);
     expect(res.body.reservation.numero_reservation).toBe("RES-000001");
-    expect(db.appels[0].nom).toBe("confirmer_reservation");
-    expect(db.appels[0].args.p_email).toBe("jean@test.com");
-    expect(db.appels[0].args.p_seance_id).toBe(1);
+
+    const appelRpc = db.appels.find(
+      (appel) => appel.nom === "confirmer_reservation"
+    );
+
+    expect(appelRpc).toBeDefined();
+    expect(appelRpc.args.p_seance_id).toBe(1);
+    expect(appelRpc.args.p_utilisateur_id).toBe(2);
+    expect(appelRpc.args.p_nom).toBe("Martin");
+    expect(appelRpc.args.p_prenom).toBe("Paul");
+    expect(appelRpc.args.p_email).toBe("paul@test.com");
+  });
+
+  test("retourne 404 si le compte utilisateur est introuvable", async () => {
+    db.enqueue(ko("Utilisateur introuvable"));
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
+    expect(res.status).toBe(404);
   });
 
   test("retourne 404 si la séance est introuvable", async () => {
-    db.enqueue(ko("Séance introuvable"));
-    const res = await POST("/reservations/confirmer", null, valide);
+    db.enqueue(
+      utilisateurConnecte,
+      ko("Séance introuvable")
+    );
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
     expect(res.status).toBe(404);
   });
 
   test("retourne 400 si des places ne sont plus disponibles", async () => {
-    db.enqueue(ko("Une ou plusieurs places ne sont plus disponibles"));
-    const res = await POST("/reservations/confirmer", null, valide);
+    db.enqueue(
+      utilisateurConnecte,
+      ko("Une ou plusieurs places ne sont plus disponibles")
+    );
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Une ou plusieurs places ne sont plus disponibles");
+    expect(res.body.message).toBe(
+      "Une ou plusieurs places ne sont plus disponibles"
+    );
   });
 
   test("retourne 500 sur une erreur inattendue de la base", async () => {
-    db.enqueue(ko("connexion perdue"));
-    const res = await POST("/reservations/confirmer", null, valide);
+    db.enqueue(
+      utilisateurConnecte,
+      ko("connexion perdue")
+    );
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
     expect(res.status).toBe(500);
-    expect(res.body.message).toBe("Erreur lors de la confirmation de la réservation");
+    expect(res.body.message).toBe(
+      "Erreur lors de la confirmation de la réservation"
+    );
   });
 
   test("retourne 500 si une exception est levée", async () => {
-    db.enqueue(lance(new Error("panne")));
-    const res = await POST("/reservations/confirmer", null, valide);
+    db.enqueue(
+      utilisateurConnecte,
+      lance(new Error("panne"))
+    );
+
+    const res = await POST("/reservations/confirmer", user, valide);
+
     expect(res.status).toBe(500);
     expect(res.body.message).toBe("Erreur interne du serveur");
   });
