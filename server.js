@@ -7,6 +7,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const supabase = require("./supabase");
 const filmsRoutes = require("./routes/films.routes");
+const { verifierToken, verifierAdmin } = require("./middlewares/auth");
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -46,38 +47,6 @@ app.use(
 );
 app.use("/films", filmsRoutes);
 const PORT = process.env.PORT || 3000;
-function verifierToken(req, res, next) {
-  const authorization = req.headers.authorization;
-
-  if (!authorization || !authorization.startsWith("Bearer ")) {
-    return res.status(401).json({
-      message: "Authentification requise"
-    });
-  }
-
-  const token = authorization.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.utilisateur = decoded;
-    next();
-  } catch  {
-    return res.status(401).json({
-      message: "Token invalide ou expiré"
-    });
-  }
-}
-
-function verifierAdmin(req, res, next) {
-  if (!req.utilisateur || req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
-    });
-  }
-
-  next();
-}
-
 
 app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) => {
   try {
@@ -239,79 +208,7 @@ app.get("/salles", async (req, res) => {
   }
 });
 
-app.post("/films", verifierToken, verifierAdmin, async (req, res) => {
-  const { titre, description, duree, genre } = req.body;
 
-  // Vérifier les champs obligatoires
-  if (
-    !titre || typeof titre !== "string" || !titre.trim() ||
-    !description || typeof description !== "string" || !description.trim() ||
-    !duree || !genre || typeof genre !== "string" || !genre.trim()
-  ) {
-    return res.status(400).json({
-      message: "Tous les champs sont obligatoires"
-    });
-  }
-
-  // Vérifier la durée
-  if (typeof duree !== "number" || !Number.isInteger(duree) || duree <= 0) {
-    return res.status(400).json({
-      message: "La durée doit être un nombre entier positif"
-    });
-  }
-
-  // Enregistrer le film dans Supabase
-  const { data: nouveauFilm, error } = await supabase
-    .from("films")
-    .insert({
-      titre: titre.trim(),
-      description: description.trim(),
-      duree,
-      genre: genre.trim(),
-      actif: true
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Erreur Supabase :", error.message);
-    return res.status(500).json({
-      message: "Erreur lors de l'ajout du film"
-    });
-  }
-
-  return res.status(201).json({
-    message: "Film ajouté avec succès",
-    film: {
-      ...nouveauFilm,
-      seances: []
-    }
-  });
-});
-
-app.get("/films/recherche", async (req, res) => {
-  const recherche = req.query.titre;
-
-  if (!recherche) {
-    return res.status(400).json({
-      message: "Veuillez saisir un titre de film"
-    });
-  }
-
-  const { data, error } = await supabase
-    .from("films")
-    .select("*")
-    .ilike("titre", `%${recherche}%`);
-
-  if (error) {
-    console.error("Erreur Supabase :", error.message);
-    return res.status(500).json({
-      message: "Erreur lors de la recherche des films"
-    });
-  }
-
-  return res.status(200).json(data);
-});
 app.get("/seances/:id/places/reservees", async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
@@ -359,69 +256,6 @@ app.get("/seances/:id/places/reservees", async (req, res) => {
     placesReservees
   });
 });
-
-app.get("/films/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({
-      message: "Identifiant du film invalide"
-    });
-  }
-
-  const { data: film, error } = await supabase
-    .from("films")
-    .select(`
-      id,
-      titre,
-      description,
-      duree,
-      genre,
-      actif,
-      seances (
-        id,
-        date_seance,
-        heure,
-        capacite,
-        salles (nom),
-        places (
-          id,
-          rangee,
-          numero,
-          statut
-        )
-      )
-    `)
-    .eq("id", id)
-    .single();
-  if (error || !film) {
-    if (error && error.code !== "PGRST116") {
-      console.error("Erreur Supabase :", error.message);
-      return res.status(500).json({
-        message: "Erreur lors de la récupération du film"
-      });
-    }
-
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
-
-  const filmAvecSeances = {
-    ...film,
-    seances: (film.seances || []).map((seance) => ({
-      id: seance.id,
-      date: seance.date_seance,
-      heure: seance.heure,
-      salle: seance.salles?.nom,
-      capacite: seance.capacite,
-      places: seance.places || []
-    }))
-  };
-
-  return res.json(filmAvecSeances);
-});
-
 
 app.post("/films/:id/seances", verifierToken, verifierAdmin, async (req, res) => {
   try {
@@ -790,122 +624,6 @@ app.patch("/seances/:id/annuler", verifierToken, verifierAdmin, async (req, res)
 });
 
 
-// Supprimer un film
-app.delete("/films/:id", verifierToken, verifierAdmin, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({
-      message: "Identifiant du film invalide"
-    });
-  }
-
-  // Supprimer le film dans Supabase
-  const { data: filmSupprime, error } = await supabase
-    .from("films")
-    .delete()
-    .eq("id", id)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error("Erreur Supabase :", error.message);
-    return res.status(500).json({
-      message: "Erreur lors de la suppression du film"
-    });
-  }
-
-  if (!filmSupprime) {
-    return res.status(404).json({
-      message: "Film introuvable"
-    });
-  }
-
-  return res.status(200).json({
-    message: "Film supprimé avec succès",
-    film: filmSupprime
-  });
-});
-
-
-app.patch("/films/:id/desactiver", verifierToken, verifierAdmin, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-
-    const { data: film, error } = await supabase
-      .from("films")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error || !film) {
-      return res.status(404).json({
-        message: "Film introuvable"
-      });
-    }
-
-    if (!film.actif) {
-      return res.status(400).json({
-        message: "Ce film est déjà désactivé"
-      });
-    }
-
-    const { data: filmDesactive, error: erreurUpdate } = await supabase
-      .from("films")
-      .update({ actif: false })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (erreurUpdate) {throw erreurUpdate;}
-
-    return res.status(200).json({
-      message: "Film désactivé avec succès",
-      film: filmDesactive
-    });
-
-  } catch (error) {
-    console.error("Erreur désactivation film :", error);
-    return res.status(500).json({
-      message: "Erreur lors de la désactivation du film"
-    });
-  }
-});
-
-
-app.get("/films/:id/seances", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-
-    const { data: film, error: erreurFilm } = await supabase
-      .from("films")
-      .select("id")
-      .eq("id", id)
-      .single();
-
-    if (erreurFilm || !film) {
-      return res.status(404).json({
-        message: "Film introuvable"
-      });
-    }
-
-    const { data: seances, error } = await supabase
-      .from("seances")
-      .select("*")
-      .eq("film_id", id)
-      .order("date_seance", { ascending: true });
-
-    if (error) {throw error;}
-
-    return res.status(200).json(seances);
-
-  } catch (error) {
-    console.error("Erreur récupération séances :", error);
-    return res.status(500).json({
-      message: "Erreur lors de la récupération des séances"
-    });
-  }
-});
 
 app.post("/reservations/selection-seance", async (req, res) => {
   const { seanceId } = req.body;
@@ -2508,30 +2226,6 @@ app.get("/statistiques/periodes-forte-affluence", verifierToken, verifierAdmin, 
 
 console.log("Route QR code chargée");
 
-// Route pour récupérer tous les films
-app.get("/films", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("films")
-      .select("*")
-      .order("id", { ascending: true });
-
-    if (error) {
-      console.error("Erreur Supabase :", error.message);
-      return res.status(500).json({
-        message: "Erreur lors de la récupération des films"
-      });
-    }
-
-    return res.status(200).json(data);
-
-  } catch (error) {
-    return res.status(500).json({
-      message: "Erreur serveur",
-      error: error.message
-    });
-  }
-});
 /**
  * @swagger
  * /films:
