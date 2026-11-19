@@ -1,3 +1,4 @@
+
 const globals = require("globals");
 
 module.exports = [
@@ -16,6 +17,14 @@ module.exports = [
       "no-unreachable": "error",
       "eqeqeq": "error",
       "curly": "error"
+    }
+  },
+  {
+    files: ["tests/**/*.js", "**/*.test.js", "**/*.spec.js"],
+    languageOptions: {
+      globals: {
+        ...globals.jest
+      }
     }
   }
 ];

@@ -21,8 +21,13 @@ GROUP BY f.titre, s.id, sa.nom, s.date_seance, s.heure
 ORDER BY s.id;
 
 
--- Vérifier les politiques RLS
-SELECT tablename, policyname
+-- Vérifier les politiques RLS de toutes les tables
+SELECT
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd
 FROM pg_policies
 WHERE schemaname = 'public'
-  AND tablename IN ('films', 'seances', 'salles', 'places');
+ORDER BY tablename, policyname;

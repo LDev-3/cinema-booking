@@ -101,7 +101,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
       .select("id")
       .eq("salle_id", salle.id);
 
-    if (erreurSeances) throw erreurSeances;
+    if (erreurSeances) {throw erreurSeances;}
 
     if (!seances || seances.length === 0) {
       return res.status(404).json({
@@ -117,7 +117,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
         .eq("seance_id", seance.id)
         .eq("statut", "reservee");
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       if (capacite < placesReservees.length) {
         return res.status(400).json({
@@ -133,7 +133,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
         .update({ capacite })
         .eq("id", seance.id);
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       // Supprimer uniquement les places disponibles
       const { error: erreurSuppression } = await supabase
@@ -142,7 +142,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
         .eq("seance_id", seance.id)
         .eq("statut", "disponible");
 
-      if (erreurSuppression) throw erreurSuppression;
+      if (erreurSuppression) {throw erreurSuppression;}
 
       // Recréer les places disponibles sans toucher aux places réservées
       const { data: reservees, error: erreurReservees } = await supabase
@@ -151,7 +151,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
         .eq("seance_id", seance.id)
         .eq("statut", "reservee");
 
-      if (erreurReservees) throw erreurReservees;
+      if (erreurReservees) {throw erreurReservees;}
 
       const placesExistantes = new Set(
         reservees.map(p => `${p.rangee}-${p.numero}`)
@@ -178,7 +178,7 @@ app.put("/salles/:nom/capacite", verifierToken, verifierAdmin, async (req, res) 
           .from("places")
           .insert(nouvellesPlaces);
 
-        if (erreurInsertion) throw erreurInsertion;
+        if (erreurInsertion) {throw erreurInsertion;}
       }
     }
 
@@ -485,7 +485,7 @@ app.post("/films/:id/seances", verifierToken, verifierAdmin, async (req, res) =>
       .eq("heure", heure)
       .limit(1);
 
-    if (erreurConflit) throw erreurConflit;
+    if (erreurConflit) {throw erreurConflit;}
 
     if (conflit.length > 0) {
       return res.status(409).json({
@@ -506,7 +506,7 @@ app.post("/films/:id/seances", verifierToken, verifierAdmin, async (req, res) =>
       .select()
       .single();
 
-    if (erreurCreation) throw erreurCreation;
+    if (erreurCreation) {throw erreurCreation;}
 
     // Préparer les places
     const places = [];
@@ -684,7 +684,7 @@ app.put("/seances/:id/salle", verifierToken, verifierAdmin, async (req, res) => 
       .neq("id", id)
       .limit(1);
 
-    if (erreurConflit) throw erreurConflit;
+    if (erreurConflit) {throw erreurConflit;}
 
     if (autreSeance.length > 0) {
       return res.status(409).json({
@@ -698,7 +698,7 @@ app.put("/seances/:id/salle", verifierToken, verifierAdmin, async (req, res) => 
       .update({ salle_id: salleTrouvee.id })
       .eq("id", id);
 
-    if (erreurMiseAJour) throw erreurMiseAJour;
+    if (erreurMiseAJour) {throw erreurMiseAJour;}
 
     return res.status(200).json({
       message: "Salle associée à la séance avec succès",
@@ -757,7 +757,7 @@ app.patch("/seances/:id/annuler", verifierToken, verifierAdmin, async (req, res)
       .select()
       .single();
 
-    if (erreurMiseAJour) throw erreurMiseAJour;
+    if (erreurMiseAJour) {throw erreurMiseAJour;}
 
     return res.status(200).json({
       message: "Séance annulée avec succès",
@@ -841,7 +841,7 @@ app.patch("/films/:id/desactiver", verifierToken, verifierAdmin, async (req, res
       .select()
       .single();
 
-    if (erreurUpdate) throw erreurUpdate;
+    if (erreurUpdate) {throw erreurUpdate;}
 
     return res.status(200).json({
       message: "Film désactivé avec succès",
@@ -879,7 +879,7 @@ app.get("/films/:id/seances", async (req, res) => {
       .eq("film_id", id)
       .order("date_seance", { ascending: true });
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     return res.status(200).json(seances);
 
@@ -1132,26 +1132,36 @@ app.get("/seances/:id/places", async (req, res) => {
     places: seance.places
   });
 });
-app.post("/reservations/confirmer", async (req, res) => {
+app.post("/reservations/confirmer", verifierToken, async (req, res) => {
   try {
-    const { seanceId, placesIds, nom, prenom, email, telephone } = req.body;
+    const { seanceId, placesIds, telephone } = req.body;
 
-    const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-      typeof email === "string" ? email.trim() : ""
-    );
+    const utilisateurId = req.utilisateur.id;
 
     if (
+      !Number.isInteger(Number(utilisateurId)) ||
       !seanceId ||
       !Array.isArray(placesIds) ||
       placesIds.length === 0 ||
       !placesIds.every(id => Number.isInteger(id)) ||
-      !nom?.trim() ||
-      !prenom?.trim() ||
-      !emailValide ||
-      !telephone?.trim()
+      typeof telephone !== "string" ||
+      !telephone.trim()
     ) {
       return res.status(400).json({
         message: "Informations de réservation invalides ou incomplètes"
+      });
+    }
+
+    // Récupérer les informations du compte connecté
+    const { data: utilisateur, error: erreurUtilisateur } = await supabase
+      .from("utilisateurs")
+      .select("id, nom, prenom, email")
+      .eq("id", utilisateurId)
+      .single();
+
+    if (erreurUtilisateur || !utilisateur) {
+      return res.status(404).json({
+        message: "Utilisateur introuvable"
       });
     }
 
@@ -1160,10 +1170,11 @@ app.post("/reservations/confirmer", async (req, res) => {
       {
         p_seance_id: Number(seanceId),
         p_places_ids: placesIds,
-        p_nom: nom.trim(),
-        p_prenom: prenom.trim(),
-        p_email: email.trim().toLowerCase(),
-        p_telephone: telephone.trim()
+        p_nom: utilisateur.nom,
+        p_prenom: utilisateur.prenom,
+        p_email: utilisateur.email,
+        p_telephone: telephone.trim(),
+        p_utilisateur_id: Number(utilisateur.id)
       }
     );
 
@@ -1205,6 +1216,7 @@ app.post("/reservations/confirmer", async (req, res) => {
 });
 
 
+
 app.post("/reservations/:id/billet", verifierToken, verifierAdmin, async (req, res) => {
   try {
     const reservationId = Number.parseInt(req.params.id, 10);
@@ -1223,7 +1235,7 @@ app.post("/reservations/:id/billet", verifierToken, verifierAdmin, async (req, r
         .eq("id", reservationId)
         .maybeSingle();
 
-    if (erreurReservation) throw erreurReservation;
+    if (erreurReservation) {throw erreurReservation;}
 
     if (!reservation) {
       return res.status(404).json({
@@ -1239,7 +1251,7 @@ app.post("/reservations/:id/billet", verifierToken, verifierAdmin, async (req, r
         .eq("reservation_id", reservationId)
         .maybeSingle();
 
-    if (erreurBillet) throw erreurBillet;
+    if (erreurBillet) {throw erreurBillet;}
 
     if (billetExistant) {
       return res.status(409).json({
@@ -1254,7 +1266,7 @@ app.post("/reservations/:id/billet", verifierToken, verifierAdmin, async (req, r
         .select("places(id, rangee, numero)")
         .eq("reservation_id", reservationId);
 
-    if (erreurPlaces) throw erreurPlaces;
+    if (erreurPlaces) {throw erreurPlaces;}
 
     const places = associations.map(a => a.places);
 
@@ -1353,7 +1365,7 @@ app.get("/billets/:numero/qr-code", async (req, res) => {
       .eq("numero_billet", numero)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!billet) {
       return res.status(404).json({
@@ -1398,7 +1410,7 @@ app.post("/billets/:numero/valider", verifierToken, verifierAdmin, async (req, r
       .eq("numero_billet", numero)
       .maybeSingle();
 
-    if (erreurRecherche) throw erreurRecherche;
+    if (erreurRecherche) {throw erreurRecherche;}
 
     if (!billet) {
       return res.status(404).json({
@@ -1427,7 +1439,7 @@ app.post("/billets/:numero/valider", verifierToken, verifierAdmin, async (req, r
         .select()
         .maybeSingle();
 
-    if (erreurMiseAJour) throw erreurMiseAJour;
+    if (erreurMiseAJour) {throw erreurMiseAJour;}
 
     if (!billetValide) {
       return res.status(400).json({
@@ -1499,7 +1511,7 @@ app.post("/utilisateurs/inscription", async (req, res) => {
         .eq("email", emailNormalise)
         .maybeSingle();
 
-    if (erreurRecherche) throw erreurRecherche;
+    if (erreurRecherche) {throw erreurRecherche;}
 
     if (utilisateurExistant) {
       return res.status(409).json({
@@ -1582,7 +1594,7 @@ app.post("/utilisateurs/connexion", async (req, res) => {
       .eq("email", emailNormalise)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!utilisateur) {
       return res.status(401).json({
@@ -1659,57 +1671,56 @@ app.get("/reservations", verifierToken, verifierAdmin, async (req, res) => {
     });
   }
 });
-app.get("/reservations/recherche/:numero", verifierToken, async(req, res) => {
-  if (req.utilisateur.role !== "admin") {
-    return res.status(403).json({
-      message: "Accès réservé aux administrateurs"
+
+app.get("/reservations/recherche/:numero", verifierToken, async (req, res) => {
+  try {
+    if (req.utilisateur.role !== "admin") {
+      return res.status(403).json({
+        message: "Accès réservé aux administrateurs"
+      });
+    }
+
+    const numero = req.params.numero.toUpperCase();
+
+    const { data: reservation, error } = await supabase
+      .from("reservations")
+      .select(`
+        *,
+        reservation_places (
+          places (
+            id,
+            seance_id,
+            rangee,
+            numero,
+            statut
+          )
+        )
+      `)
+      .eq("numero_reservation", numero)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!reservation) {
+      return res.status(404).json({
+        message: "Réservation introuvable"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Réservation trouvée avec succès",
+      reservation
+    });
+
+  } catch (error) {
+    console.error("Erreur recherche réservation :", error);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
     });
   }
-
-  const numero = req.params.numero.toUpperCase();
-
- const { data: reservation, error } = await supabase
-  .from("reservations")
-  .select(`
-    *,
-    reservation_places (
-      places (
-        id,
-        seance_id,
-        rangee,
-        numero,
-        statut
-      )
-    )
-  `)
-  .eq("numero_reservation", numero)
-  .maybeSingle();
-
-if (error) {
-  throw error;
-}
-
-if (!reservation) {
-  return res.status(404).json({
-    message: "Réservation introuvable"
-  });
-}
-
-return res.status(200).json({
-  message: "Réservation trouvée avec succès",
-  reservation
-});
-
-  if (!reservation) {
-    return res.status(404).json({
-      message: "Réservation introuvable"
-    });
-  }
-
-  return res.status(200).json({
-    message: "Réservation trouvée avec succès",
-    reservation
-  });
 });
 
 app.get("/reservations/seance/:seanceId", verifierToken, async (req, res) => {
@@ -1796,7 +1807,7 @@ app.get("/utilisateurs/mes-reservations", verifierToken, async (req, res) => {
       .eq("email", email)
       .order("date_reservation", { ascending: false });
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     // Adapter les données au format de réponse de l'API
     const mesReservations = reservations.map((reservation) => ({
@@ -1865,7 +1876,7 @@ app.get("/utilisateurs/mes-billets", verifierToken, async (req, res) => {
       .eq("reservations.email", email)
       .order("date_generation", { ascending: false });
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     // Formater les billets
     const mesBillets = billets.map((billet) => {
@@ -1942,7 +1953,7 @@ app.put("/utilisateurs/mes-informations", verifierToken, async (req, res) => {
         .neq("id", req.utilisateur.id)
         .maybeSingle();
 
-    if (erreurRecherche) throw erreurRecherche;
+    if (erreurRecherche) {throw erreurRecherche;}
 
     if (emailExistant) {
       return res.status(409).json({
@@ -1962,7 +1973,7 @@ app.put("/utilisateurs/mes-informations", verifierToken, async (req, res) => {
       .select("id, nom, prenom, email, role")
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!utilisateur) {
       return res.status(404).json({
@@ -2006,7 +2017,7 @@ app.put("/utilisateurs/changer-mot-de-passe", verifierToken, async (req, res) =>
       .eq("id", req.utilisateur.id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!utilisateur) {
       return res.status(404).json({
@@ -2032,7 +2043,7 @@ app.put("/utilisateurs/changer-mot-de-passe", verifierToken, async (req, res) =>
       .update({ mot_de_passe: nouveauMotDePasseHache })
       .eq("id", req.utilisateur.id);
 
-    if (erreurMaj) throw erreurMaj;
+    if (erreurMaj) {throw erreurMaj;}
 
     return res.status(200).json({
       message: "Mot de passe modifié avec succès"
@@ -2055,7 +2066,7 @@ app.get("/utilisateurs/mes-informations", verifierToken, async (req, res) => {
       .eq("id", req.utilisateur.id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!utilisateur) {
       return res.status(404).json({
@@ -2176,7 +2187,7 @@ app.put("/utilisateurs/notifications/:id/lue", verifierToken, async (req, res) =
       .select("*")
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {throw error;}
 
     if (!notification) {
       return res.status(404).json({
